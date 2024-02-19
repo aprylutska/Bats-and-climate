@@ -1,0 +1,269 @@
+---
+title: "Climate"
+author: "Oleh"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls()) # reset R's brain
+# Load libraries
+library(tidyverse) # for data manipulations
+library(easyclimate) # for daily climate data extraction
+library(sf) # for spatial operations
+library(lubridate)
+```
+
+Loaded packages with their versions
+```{r echo=FALSE}
+sessionInfo() # to check your locale
+
+# if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
+# To fix that, you need to re-map locate into US (will be back after restart R session)
+
+# Set locale to get English months names
+# Sys.setlocale("LC_TIME", "en_US.UTF-8") # for Linux
+# Sys.setlocale("LC_TIME", "English") # for Windows
+```
+
+# Weather data
+## Generate weather data
+
+Source daily weather data have been downloaded on the previous step using `easyclimate` package and saved as *.Rdata file. Do not download data each time! Use saved file instead.
+
+```{r echo=FALSE}
+load(file = "daily_weather_2008-2019.Rdata")
+```
+
+
+## Calculate additional weather variables
+Calculate derived metrics (diurnial range, mean daily temperature, positive daily temperature).
+Subset only years of inventory (2008, 2011, 2014, 2019)
+```{r}
+daily <- daily %>% 
+   # Calculate derived metrics for each day
+  mutate(DiurnialRange = Tmax - Tmin,
+         MeanTemp = (Tmin + Tmax) / 2,
+         # Get only positive mean temperatures (for Growing degree units calculation)
+         PositiveMeanTemp = ifelse(MeanTemp > 0, MeanTemp, 0)) %>%
+  # Adjust dates and add new variables for month and years
+  mutate(date = as.Date(date),
+         month = months(date),
+         year = format(date, format = "%Y")) %>%
+  # Filter only years of inventories
+  filter(year %in% c(2008, 2011, 2014, 2019))
+```
+
+## Calculate GDU
+Growing degree units (Sum of the mean daily temperature above 0 from the start of the year).
+Create custom function that calculate GDUs for each day of the year.
+```{r}
+# Must be calculated for each year separately.
+# Data must contain one row per day and the variable with the positive daily mean temperature.
+# If mean temperature is negative, put zero in this variable.
+# Also the variable with the full date MUST be character AND named "date"
+gdu <- function(daily_data_for_one_year, 
+                var_with_PositiveMeanTemp) {
+  GDU <- list() # prepare empty list
+  
+  # looping through the daily data within the year 
+  for (i in 1:nrow(daily_data_for_one_year)) {
+    GDU[[i]] <- c(daily_data_for_one_year$date[i],
+                  sum(daily_data_for_one_year[1:i, var_with_PositiveMeanTemp])
+    )
+  }
+  # reshape obtained list
+  GDU <- as.data.frame(GDU)
+  GDU <- as.data.frame(t(GDU))
+  colnames(GDU) <- c("date", "GDU")
+  # retrieve the result
+  return(GDU)
+}
+```
+
+Calculate GDU and add it to the main weather data frame.
+```{r}
+# List all required years
+list_of_years <- c(2008, 2011, 2014, 2019)
+
+# Create an empty list
+gdu_by_years <- list()
+
+for (k in 1:length(list_of_years)) {
+  # Calculate GDUs for each year
+  df <- daily %>% 
+    # loop doesn't seem to work with `date` format, convert to character
+    mutate(date = as.character(date)) %>%
+    filter(year == list_of_years[[k]]) %>% 
+    select(place, date, PositiveMeanTemp) %>%
+    split(.$place)
+  
+  # Create an empty list
+  df_gdu <- list()
+  
+  # Loop through the list elements (data frames with all days for the particular year,
+  # split by place ID)
+  for (i in 1:length(df)) {
+    df_gdu[[i]] <- gdu(df[[i]], "PositiveMeanTemp")
+    df_gdu[[i]]$place <- df[[i]]$place
+  }
+  
+  # Transform list of data frames into a single data frame
+  gdu_by_years[[k]] <- bind_rows(df_gdu)
+
+}
+
+# Transform list of data frames into a single data frame
+GDU <- bind_rows(gdu_by_years) %>% 
+  mutate(date = as.Date(date))
+
+# Add GDU as additional variable to the daily climate data for required years
+daily <- daily %>% 
+  left_join(GDU, by = c("date", "place"))
+
+# Drop temporary variables not longer required
+rm(df, df_gdu, GDU, gdu_by_years, i, k)
+```
+
+
+
+## Explore weather data
+We selected two periods that are supposed to be influential for bar growth: the *spring* (March 25 - May 24) as a pre-natal period for bat cups, and the *summer* (May 25 - Jut 24) as an early post-natal period prior to the inventory.
+
+Since 2008 was a leap year, Julian days was different.
+What is March 25 for each year?
+```{r}
+daily %>% 
+  mutate(day = lubridate::yday(date)) %>% 
+  select(date, day) %>% 
+  filter(month(date) == 3 & day(date) == 25) %>% 
+  unique()
+```
+
+
+Excluding dates out of those two periods
+```{r}
+# Pre-natal (spring) periods only
+daily %>% 
+  filter(date >= "2008-03-25" & date < "2008-05-25") %>% 
+  mutate(season = "spring") -> spring2008
+
+daily %>% 
+  filter(date >= "2011-03-25" & date < "2011-05-25") %>% 
+  mutate(season = "spring") -> spring2011
+
+daily %>% 
+  filter(date >= "2014-03-25" & date < "2014-05-25") %>% 
+  mutate(season = "spring") -> spring2014
+
+daily %>% 
+  filter(date >= "2019-03-25" & date < "2019-05-25") %>% 
+  mutate(season = "spring") -> spring2019
+
+# Post-natal (summer) periods only
+daily %>% 
+  filter(date >= "2008-05-25" & date < "2008-06-25") %>% 
+  mutate(season = "summer") -> summer2008
+
+daily %>% 
+  filter(date >= "2011-05-25" & date < "2011-06-25") %>% 
+  mutate(season = "summer") -> summer2011
+
+daily %>% 
+  filter(date >= "2014-05-25" & date < "2014-06-25") %>% 
+  mutate(season = "summer") -> summer2014
+
+daily %>% 
+  filter(date >= "2019-05-25" & date < "2019-06-25") %>% 
+  mutate(season = "summer") -> summer2019
+
+daily_spring_summer <- bind_rows(spring2008, spring2011, spring2014, spring2019,
+                                 summer2008, summer2011, summer2014, summer2019)
+
+# Remove unused temorary variables
+rm(spring2008, spring2011, spring2014, spring2019,
+   summer2008, summer2011, summer2014, summer2019)
+```
+
+
+
+Take a look at the minimal temperatures for springs in 2008-2019
+```{r}
+daily_spring_summer |>
+  filter(season == "spring") %>% 
+  select(date, year, Tmin) |>
+  ggplot(aes(Tmin)) +
+  geom_density(fill = "lightgreen", 
+               alpha = 0.5) +
+  facet_wrap( ~ factor(year)) +
+  labs(title = "Spring",
+       x = "Minimal temperature") +
+  theme_bw()
+
+ggsave("./figures/Tmin_2008-2019_density_Spring.png", width = 16, height = 12, units = "cm", dpi = 150)
+```
+
+Take a look at the minimal temperatures for summers in 2008-2019
+```{r}
+daily_spring_summer |>
+  filter(season == "summer") %>% 
+  select(date, year, Tmin) |>
+  ggplot(aes(Tmin)) +
+  geom_density(fill = "lightgreen", 
+               alpha = 0.5) +
+  facet_wrap( ~ factor(year)) +
+  labs(title = "Summer",
+       x = "Minimal temperature") +
+  theme_bw()
+
+ggsave("./figures/Tmin_2008-2019_density_Apr.png", width = 16, height = 12, units = "cm", dpi = 150)
+```
+
+
+
+## Generate exploratory variables for bat growth ~ weather models
+
+```{r}
+# Cumulative precipitation
+daily_spring_summer %>% 
+  group_by(season, place, year) %>% 
+  summarise(sum(Prcp)) -> Prcp_var
+
+
+# Average minimum daily temperature
+daily_spring_summer %>% 
+  group_by(season, place, year) %>% 
+  summarise(mean(Tmin)) -> Tmean_var
+
+# Number of days with mean temperature less or equal 10 Celsius degree
+daily_spring_summer %>% 
+  filter(MeanTemp <= 10) %>% 
+  count(season, place, year) -> Less10_var
+
+
+# GDU at the end of a spring period
+daily_spring_summer %>% 
+  filter(month(date) == 5 & day(date) == 24) %>% 
+  select(season, date, place, year, GDU) -> GDU_spring
+
+# GDU at the end of a summer period
+daily_spring_summer %>% 
+  filter(month(date) == 6 & day(date) == 24) %>% 
+  select(season, date, place, year, GDU) -> GDU_summer
+
+```
+
+
+
+
+
+
+Merge weather data with bat survey data and save it for further sessions
+```{r}
+# Merge data
+# TBD
+
+# Export climate data for further sessions
+# save(df_clim, file = "bats_wClimate_2008-2019.Rdata")
+```

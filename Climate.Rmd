@@ -1,0 +1,364 @@
+---
+title: "Climate"
+author: "Alona"
+date: "2024-01-08"
+output: html_document
+---
+# Підготовка даних про довжину передпліччя Ra та вагу W кажанів
+
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls()) # reset R's brain
+library(lubridate)  
+library(ggplot2)
+library(jtools)
+```
+
+```{r}
+df <- read.csv("Homolsha_all_years.csv") # read data from *.csv file
+
+# Set variables classes
+df$date <- as.Date(df$Data, "%d.%m.%Y") # convert date to R Data format
+df$Place <- as.factor(df$Place)
+df$Species <- as.factor(df$Species)
+df$sex <- as.factor(df$sex)
+df$age <- as.factor(df$age)
+
+df$Year <- year(df$date) #виокремлення року
+df$Year <-as.factor (df$Year)
+#створення нової колонки з даними про день від початку року 
+df$day <- yday(df$date)
+
+
+df$Ra <- sub(",", ".", df$Ra) #заміна ком на крапки в промірах передпліччя
+df$W <- sub(",", ".", df$W)
+
+df$Ra <-as.numeric (df$Ra) #присвоєння промірам нумеричного типу даних
+df$W <-as.numeric (df$W)
+
+# Delete unused variables
+df$Data <- NULL
+df$reproductive.status <- NULL
+
+# Take a look at the data
+summary(df)
+
+```
+
+
+Check age structure among species
+```{r}
+table (df$Species,df$age)
+```
+
+
+Відбираємо лише два види та тільки молодих - вечірниці та нічниці
+```{r}
+# Subset only some species (e.g., N.noc. and M.daubentonii )
+df <- subset(df, 
+              Species %in% c('Nyctalus noctula',
+                             'Myotis daubentonii') & 
+                age == "sad"
+              )
+
+summary (df)
+```
+
+
+
+```{r}
+ggplot(data = df, aes(Ra, W, colour = Species)) +
+  geom_point()
+```
+
+# t ~ Ra
+
+```{r}
+ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(Species),
+             scales = "free") 
+```
+
+```{r}
+table(df$Year, df$Species)
+```
+
+```{r}
+# Subset only some species (e.g., N.noc.)
+nnoc_df <- subset(df, 
+              Species %in% c('Nyctalus noctula') & 
+                age == "sad"
+              )
+
+summary (nnoc_df)
+```
+
+## Перевірка чи дані впродовж двох тижнів різняться
+Instructions from https://tobiasroth.github.io/BDAEcology/lmer.html
+Additional beginner's guide https://rstudio-pubs-static.s3.amazonaws.com/63556_e35cc7e2dfb54a5bb551f3fa4b3ec4ae.html
+
+```{r}
+library (lme4)
+# `lme4` requires `Matrix` >= 1.6-4. See for more details https://community.rstudio.com/t/error-in-initializeptr-function-cholmod-factor-ldeta-not-provided-by-package-matrix/178694
+```
+
+
+Null-model (random effect only)
+```{r}
+mod0Ra <- lmer (Ra ~ 1 + (1|Year),
+             data=nnoc_df
+             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
+             )
+
+summary (mod0Ra)
+```
+
+
+```{r}
+summ(mod0Ra)
+```
+
+To test the variance of intersepts
+```{r}
+library(lmerTest)
+ranova(mod0Ra)
+```
+
+Model with one fixed effect - time (as day from the beginning of year)
+```{r}
+mod1Ra <- lmer (Ra ~ day + (1 |Year),
+             data=nnoc_df
+             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
+             )
+
+summary (mod1Ra)
+```
+
+
+```{r}
+library(jtools)
+summ(mod1Ra)
+```
+
+Tp test the variance of intersepts
+```{r}
+library(lmerTest)
+ranova(mod1Ra)
+```
+
+```{r}
+plot (mod1Ra)
+```
+
+# t ~ W
+Make a model with Weight gata of subadult bast 
+Null-model (random effect only)
+
+```{r}
+mod0_W <- lmer (W ~ 1 + (1|Year),
+             data=nnoc_df
+             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
+             )
+
+
+summ(mod0_W)
+```
+
+Model weight with one fixed effect - time (as day from the beginning of year)
+```{r}
+mod1W <- lmer (W ~ day + (1 |Year),
+             data=nnoc_df
+             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
+             )
+
+summ(mod1W)
+```
+
+```{r}
+library(lmerTest)
+ranova(mod1W)
+```
+
+```{r}
+plot (mod1W)
+```
+
+```{r}
+ggplot(data = df, aes(x = day, y = W, colour = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(Species),
+             scales = "free") 
+```
+
+#Model for body condition Ra-W
+створення нової колонки з даними про співідношення Ra до W
+```{r}
+nnoc_df$Ra_W <- nnoc_df$Ra / nnoc_df$W
+nnoc_df$Ra_sqrtW <- nnoc_df$Ra / sqrt (nnoc_df$W)
+nnoc_df$Ra_logW <- nnoc_df$Ra / log (nnoc_df$W)
+nnoc_df$Ra_sqrtday <- nnoc_df$Ra / sqrt (nnoc_df$day)
+nnoc_df$Ra_logday <- nnoc_df$Ra / log (nnoc_df$day)
+```
+
+
+
+
+
+
+
+
+# Weather data
+## Generate weather data
+```{r}
+# Take a look at the timespan
+summary(df$date)
+```
+
+```{r}
+# Load libraries
+library(tidyverse) # for data manipulations
+library(easyclimate) # for daily climate data extraction
+library(sf) # for spatial operations
+```
+
+
+
+```{r eval=FALSE, echo=FALSE, message=FALSE}
+# Create data frame with point coordinates
+coords <- data.frame(
+  place = c("R1", "R2", "Fed1", "Fed2", "Fed3", "F1", "F2", "F3", "F4"),
+  lon = c(36.33329, 36.32946, 36.32732, 36.32863, 36.33436, 36.32396, 36.32319, 36.31990, 36.31909),
+  lat = c(49.62554, 49.62092, 49.62298, 49.61411, 49.60477, 49.61782, 49.61169, 49.60948, 49.60782)
+)
+
+# Retrieve daily weather values using {easyclimate} package
+# Prcp - Total precipitation in mm
+# Tmin - minimal temperature, Celsius degrees
+# Tmax - maximal temperature, Celsius degrees
+
+daily <- get_daily_climate(
+  coords = coords,
+  period = 2008:2019,
+  climatic_var = c("Prcp","Tmin","Tmax"),
+  output = "df")
+
+save(daily, file = "daily_weather_2008-2019.Rdata") # save weather data
+```
+
+```{r echo=FALSE}
+load(file = "daily_weather_2008-2019.Rdata")
+```
+
+```{r echo=FALSE, eval=FALSE}
+sessionInfo() # to check your locale
+
+# if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
+# To fix that, you need to re-map locate into US (will be back after restart R session)
+
+# Set locale to get English months names
+# Sys.setlocale("LC_TIME", "en_US.UTF-8") # for Linux
+# Sys.setlocale("LC_TIME", "English") # for Windows
+```
+
+
+
+```{r}
+daily <- daily |>
+  mutate(DiurnialRange = Tmax-Tmin,          # Calculate derived metrics
+         MeanTemp = (Tmin + Tmax)/2,
+         PositiveMeanTemp = ifelse(MeanTemp > 0, MeanTemp, 0)) |> # Get only positive mean temperatures (for Growing degree units calculation)
+  mutate(date = as.Date(date),
+         month = months(date),
+         year = format(date, format = "%Y")) # Adjust dates and add new variables for month and years
+```
+
+
+```{r}
+# Take a look at the minimal temperatures of April in 2008-2011
+# temp_long <- daily %>%
+#   pivot_longer(
+#     cols = "Tmin",
+#     names_to = "temp_vars",
+#     values_to = "temp_values")
+
+daily |>
+  filter(month == "April") |>
+  select(date, year, Tmin) |>
+  ggplot(aes(Tmin)) +
+  geom_density(fill = "lightgreen", 
+               alpha = 0.5) +
+  facet_wrap( ~ factor(year)) +
+  labs(title = "April",
+       x = "Minimal temperature") +
+  theme_bw()
+
+ggsave("Tmin_2008-2011_density_Apr.png", width = 16, height = 12, units = "cm", dpi = 150)
+
+
+daily |>
+  filter(month == "April") |>
+  select(date, year, Tmin) |>
+  ggplot(aes(year, Tmin)) +
+  geom_boxplot(fill = "lightgreen", 
+               alpha = 0.5) +
+  labs(title = "April",
+       x = "years",
+       y = "Minimal temperature") +
+  theme_bw()
+
+ggsave("Tmin_2008-2011_boxplot_Apr.png", width = 16, height = 12, units = "cm", dpi = 150)
+
+
+
+daily |>
+  filter(month %in% c("March", "April", "May", "June")) |>
+  select(date, year, month, Tmin) |>
+  ggplot(aes(year, Tmin)) +
+  geom_boxplot(fill = "lightgreen", 
+               alpha = 0.5) +
+  facet_wrap( ~ factor(month)) +
+  labs(x = "years",
+       y = "Minimal temperature") +
+  theme_bw()
+
+ggsave("Tmin_2008-2011_boxplot_Mar-Jun.png", width = 16, height = 12, units = "cm", dpi = 150)
+
+
+# Calculate GDU
+# Growing degree units (Sum of the mean daily temperature above 0 from the start of the year)
+daily$date <- as.character(daily$date) # loop doesn't seem to work with `date` format
+
+GDU <- list() # prepare empty list
+
+for (i in 1:nrow(daily)) {
+  GDU[[i]] <- c(daily$date[i], sum(daily$PositiveMeanTemp[1:i]))
+}
+
+GDU <- as.data.frame(GDU)
+GDU <- as.data.frame(t(GDU))
+colnames(GDU) <- c("date", "GDU")
+
+# Merge derived climate data
+climate <- daily |>                     # direct daily measurements
+  full_join(GDU, by = "date") |>        # Growing degree units
+  mutate(date = as.Date(date)) |>       # keep date as Date
+  mutate(month = as.factor(month)) |>
+  mutate(GDU = as.numeric(GDU))
+  
+
+# Export climate data for further sessions
+save(climate, file = "climate_2008-2011.Rdata")
+
+# Merge climate data with bats data
+
+df_clim <- df |>
+  left_join(climate, by = "date")
+
+# Export climate data for further sessions
+save(df_clim, file = "bats_wClimate_2008-2011.Rdata")
+```
+
+
