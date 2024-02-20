@@ -4,15 +4,25 @@ author: "Alona"
 date: "2024-01-08"
 output: html_document
 ---
+#How weather conditions during pregnancy and lactation influence young bats development?
 
 
 # Introduction
 
 
-
-
-
 # Material & Methods
+Bat captures were carried out in July in 2008, 2011, 2014 and 2019 in the frame of monitoring in the National Nature Park “Homilshansky lisy”, Kharkiv Oblast, Ukraine. Bats were caught with nylon mist nets 12 m in length and 3 m high; mesh size-15 mm) at exactly the same locations each year. 
+Mist nets were open from sunset until sunrise, weather permitting. Totally 18 capture nights every year. 
+
+Body weight measurements were done after 8-10 hours.
+736 subadult bats of 2 species
+
+Bats were kept in textile bags near the net throughout the night. We recorded species, sex and age and identi- fied breeding status of adult individuals of both sexes. The main features in identifying bat age were: ossifica- tion degree of joints of finger phalanx of the wing (the presence of cartilage at sight check), size and shape of nipples for females. We took into consideration the degree of grind of the canine teeth among medium and big size bat species.
+All animals after biometrical process were released as soon as possible. All measures related to bat capturing, holding and carrying in bags were ethical, respectful for animal welfare and conservation of protected species, according to Gannon (2007).
+
+
+Research question and predictions
+Does temperature (and rainfall) during period of pregnancy and lactation affect growth of young bats?Warmer and drier conditions lead to bigger sizes2 species, migrant and sedentary
 
 
 ## Підготовка даних про довжину передпліччя Ra та вагу W кажанів
@@ -106,6 +116,15 @@ ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
              scales = "free") 
 ```
 
+## t ~ W
+
+```{r}
+ggplot(data = df, aes(x = day, y = W, colour = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(Species),
+             scales = "free") 
+```
 
 ```{r}
 table(df$Year, df$Species)
