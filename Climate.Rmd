@@ -101,6 +101,59 @@ summary (df)
 
 
 
+## Make synthetic growth indices
+
+```{r}
+# Ra/W
+df$Ra_W <- df$Ra / df$W
+
+# Ra / square root of W
+df$Ra_sqW <- df$Ra / sqrt(df$W)
+
+# Ra / log W
+df$Ra_logW <- df$Ra / log(df$W)
+
+# Ra / square root of day-of-year
+df$RA_sqDOY <- df$Ra / sqrt(df$day)
+
+# Since day of year is not changing hugely during sampling time span in absolute 
+# measure, scaling to July, 1st = "zero day" may be a possible alternative
+
+# Ra / square root of day-since-Jul1
+# Which day-of-year is July, 1st
+Jul_1st <- tibble(
+  year = c(2008, 2011, 2014, 2019),
+  Jul1_DOY = c(lubridate::yday(as.Date("2008-07-01")),
+               lubridate::yday(as.Date("2011-07-01")),
+               lubridate::yday(as.Date("2014-07-01")),
+               lubridate::yday(as.Date("2019-07-01"))
+  )
+)
+
+Jul_1st
+```
+
+```{r}
+# Only 2008 as a leap year, so we can calculate ration with zero-day using
+# the following loop:
+
+for(i in 1: nrow(df)){
+    if(df$Year[i] == "2008"){
+    df$RA_sqDsJ1[i] <- df$Ra[i] / sqrt(df$day[i] - 183)
+    } else {
+      df$RA_sqDsJ1[i] <- df$Ra[i] / sqrt(df$day[i] - 182)
+    }
+}
+
+```
+
+
+
+
+
+
+
+
 ```{r}
 ggplot(data = df, aes(Ra, W, colour = Species)) +
   geom_point()
@@ -144,7 +197,7 @@ summary (nnoc_df)
 Instructions from https://tobiasroth.github.io/BDAEcology/lmer.html
 Additional beginner's guide https://rstudio-pubs-static.s3.amazonaws.com/63556_e35cc7e2dfb54a5bb551f3fa4b3ec4ae.html
 
-```{r}
+```{r, message=FALSE}
 library (lme4)
 # `lme4` requires `Matrix` >= 1.6-4. See for more details https://community.rstudio.com/t/error-in-initializeptr-function-cholmod-factor-ldeta-not-provided-by-package-matrix/178694
 ```
@@ -247,6 +300,7 @@ nnoc_df$Ra_logW <- nnoc_df$Ra / log (nnoc_df$W)
 nnoc_df$Ra_sqrtday <- nnoc_df$Ra / sqrt (nnoc_df$day)
 nnoc_df$Ra_logday <- nnoc_df$Ra / log (nnoc_df$day)
 ```
+
 
 
 
