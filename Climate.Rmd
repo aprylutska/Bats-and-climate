@@ -11,13 +11,8 @@ output: html_document
 
 
 # Material & Methods
-Bat captures were carried out in July in 2008, 2011, 2014 and 2019 in the frame of monitoring in the National Nature Park “Homilshansky lisy”, Kharkiv Oblast, Ukraine. Bats were caught with nylon mist nets 12 m in length and 3 m high; mesh size-15 mm) at exactly the same locations each year. 
-Mist nets were open from sunset until sunrise, weather permitting. Totally 18 capture nights every year. 
-
-Body weight measurements were done after 8-10 hours.
-736 subadult bats of 2 species
-
-Bats were kept in textile bags near the net throughout the night. We recorded species, sex and age and identi- fied breeding status of adult individuals of both sexes. The main features in identifying bat age were: ossifica- tion degree of joints of finger phalanx of the wing (the presence of cartilage at sight check), size and shape of nipples for females. We took into consideration the degree of grind of the canine teeth among medium and big size bat species.
+736 subadult bats of 2 species (Nyctalus noctula and Myotis daubentonii) were captured in July in 2008, 2011, 2014 and 2019 in the frame of bat monitoring in the National Nature Park “Homilshansky lisy”, Kharkiv Oblast, Ukraine. Bats were caught with nylon mist nets 12 m in length and 3 m high; mesh size-15 mm) at exactly the same location each year.Totally 18 capture nights every year. Mist nets were open from sunset until sunrise, weather permitting. Body weight (0.1 g) and forearm lenght (0.1 mm) measurements were done in 8-10 hours after the end of capture.
+We recorded species, sex and age of the bat. The main features in identifying bat age were: ossification degree of joints of finger phalanx of the wing (the presence of cartilage at sight check), size and shape of nipples for females. We took into consideration the degree of grind of the canine teeth for Nyctalus noctula. 
 All animals after biometrical process were released as soon as possible. All measures related to bat capturing, holding and carrying in bags were ethical, respectful for animal welfare and conservation of protected species, according to Gannon (2007).
 
 
