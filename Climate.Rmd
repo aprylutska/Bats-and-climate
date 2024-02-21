@@ -2,27 +2,36 @@
 title: "Climate"
 author: "Alona"
 date: "2024-01-08"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
 ---
 #How weather conditions during pregnancy and lactation of bats influence subadult bats development?
 
 
-# Introduction
-
-
 # Material & Methods
-736 subadult bats of 2 species (Nyctalus noctula and Myotis daubentonii) were captured in July in 2008, 2011, 2014 and 2019 in the frame of bat monitoring in the National Nature Park “Homilshansky lisy”, Kharkiv Oblast, Ukraine. Bats were caught with nylon mist nets 12 m in length and 3 m high; mesh size-15 mm) at exactly the same location each year.Totally 18 capture nights every year. Mist nets were open from sunset until sunrise, weather permitting. Body weight (0.1 g) and forearm lenght (0.1 mm) measurements were done in 8-10 hours after the end of capture.
-We recorded species, sex and age of the bat. The main features in identifying bat age were: ossification degree of joints of finger phalanx of the wing (the presence of cartilage at sight check), size and shape of nipples for females. We took into consideration the degree of grind of the canine teeth for Nyctalus noctula. 
-All animals after biometrical process were released as soon as possible. All measures related to bat capturing, holding and carrying in bags were ethical, respectful for animal welfare and conservation of protected species, according to Gannon (2007).
+Bat Capture and Monitoring:
+Bats were captured during the month of July in the years 2008, 2011, 2014, and 2019 as part of a bat monitoring program of the National Nature Park “Homilshansky lisy”, located in the Kharkiv Oblast, Ukraine. The capture methodology involved the use of nylon mist nets (12 meters in length and 3 meters in height, with a mesh size of 15 mm). Nets were consistently deployed at the same locations each year. A total of 18 capture nights were conducted annually, with mist nets set from sunset until sunrise. Body weight measurements, rounded to the nearest 0.1 gram, and forearm length measurements, rounded to the nearest 0.1 millimeter, were obtained within 8-10 hours following the capture events.
+
+Data collected during the capture process included species identification, sex and age determination. Age classification was primarily based on the degree of ossification observed in the joints of the finger phalanx of the wing, the size and morphology of nipples for female bats, and for Nyctalus noctula specifically, the wear pattern of canine teeth. All captured bats underwent biometric assessments before being promptly released back into their natural habitat. All procedures involved in the capture, handling, and transportation of bats were conducted with strict adherence to ethical standards and principles of animal welfare and conservation, as outlined by Gannon (2007).
+
+Weather Data Acquisition and Analysis:
+Weather data, encompassing precipitation (Prcp), minimum temperature (Tmin), and maximum temperature (Tmax), for the study area were obtained using the easyclimate R package. Additional weather variables, including diurnal temperature range, mean daily temperature, positive daily temperature, and Growing Degree Units (the sum of mean daily temperatures above 0°C from the commencement of the year), were computed for further analysis.
 
 
-Research question and predictions
-Does weather conditions during period of pregnancy and lactation affect growth of young bats? 
-Warmer and drier conditions lead to bigger sizes in bats
+The analysis focused on two distinct periods deemed crucial for bat growth: the spring period, spanning from March 25th to May 24th, characterized as the pre-natal phase for bat pups, and the summer period, extending from May 25th to June 24th, considered as the early post-natal phase preceding the captures. Due to the occurrence of a leap year in 2008, adjustments were made for Julian days accordingly.
+
+Research Question and Hypotheses:
+Whether weather conditions during the periods of pregnancy and lactation influence the growth of young bats? It was hypothesized that years characterized by warmer and drier conditions during spring would correspond to larger sizes in subadult bats.
+
+
+A total of 736 subadult bats from two species, Nyctalus noctula and Myotis daubentonii were taken for the analysis. 
 
 
 
 ## Підготовка даних про довжину передпліччя Ra та вагу W кажанів
+Data preparation
 
 
 ```{r, echo=FALSE, message=FALSE}
@@ -84,24 +93,24 @@ table (df$Species,df$age)
 ```
 
 
-Відбираємо лише два види та тільки молодих - вечірниці та нічниці
+Відбираємо лише один вид та тільки молодих - вечірниці
 ```{r}
-# Subset only some species (e.g., N.noc. and M.daubentonii )
+# Subset only some species (e.g., N.noc. , M.daubentonii)
 df <- subset(df,
-              Species %in% c('Nyctalus noctula',
-                             'Myotis daubentonii') &
+              Species %in% c('Nyctalus noctula'
+                              #,'Myotis daubentonii'
+                             ) &
                 age == "sad"
               )
 
 summary (df)
 ```
 
-
-## Make synthetic growth indices
+## Make synthetic growth indices (index of body condition)
 
 ```{r}
-# Ra/W
-df$Ra_W <- df$Ra / df$W
+# W/Ra
+df$W_Ra <- df$W / df$Ra
 
 # Ra / square root of W
 df$Ra_sqW <- df$Ra / sqrt(df$W)
@@ -111,6 +120,12 @@ df$Ra_logW <- df$Ra / log(df$W)
 
 # Ra / square root of day-of-year
 df$RA_sqDOY <- df$Ra / sqrt(df$day)
+
+# log10 Ra
+df$Ra_log10 <- log10(df$Ra)
+
+# log10 W
+df$W_log10 <- log10(df$W)
 
 # Since day of year is not changing hugely during sampling time span in absolute 
 # measure, scaling to July, 1st = "zero day" may be a possible alternative
@@ -135,17 +150,14 @@ Jul_1st
 
 for(i in 1: nrow(df)){
     if(df$Year[i] == "2008"){
-    df$RA_sqDsJ1[i] <- df$Ra[i] / sqrt(df$day[i] - 183)
+    df$RA_sqDsJ1[i] <- df$Ra[i] / (df$day[i] - 183)
     } else {
-      df$RA_sqDsJ1[i] <- df$Ra[i] / sqrt(df$day[i] - 182)
+      df$RA_sqDsJ1[i] <- df$Ra[i] / (df$day[i] - 182)
     }
 }
 
+
 ```
-
-
-
-
 
 
 
@@ -175,28 +187,159 @@ ggplot(data = df, aes(x = day, y = W, colour = Year)) +
              scales = "free") 
 ```
 
+sample
 ```{r}
 table(df$Year, df$Species)
 ```
 
-```{r}
-# Subset only some species (e.g., N.noc.)
-nnoc_df <- subset(df, 
-              Species %in% c('Nyctalus noctula') & 
-                age == "sad" & Year == '2019'
-              )
-
-summary (nnoc_df)
-```
 
 ## Перевірка чи дані по Ra та W впродовж двох тижнів різняться суттєво 
 ## fit a linear regression to Ra and W.  Check if the Ra, W parametres changes with time aren't significant. So we can use it (for each year) as a one sample
 
 ```{r} 
+df1 <- subset(df,Year == '2008')
+
+mod <- lm(Ra ~ day, data=df1)
+summary (mod)                                            
+plot(mod)
+ggplot(data = df1, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=df1, aes (x = Ra)) +
+  geom_histogram()
+```
+
+
+```{r} 
+df2 <- subset(df,Year == '2011')
+
+mod <- lm(Ra ~ day, data = df2)
+summary (mod)                                            
+plot(mod)
+ggplot(data = df2, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=df2, aes (x = Ra)) +
+  geom_histogram()
+```
+
+
+```{r} 
+df3 <- subset(df, Year == '2014'
+              )
+
+mod <- lm(Ra ~ day, data=df3)
+summary (mod)                                            
+plot(mod)
+ggplot(data = df3, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=df3, aes (x = Ra)) +
+  geom_histogram()
+```
+
+
+
+```{r} 
+df4 <- subset(df, Year == '2019'
+              )
+
+mod <- lm(Ra ~ day, data=df4)
+summary (mod)                                            
+plot(mod)
+ggplot(data = df4, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=df4, aes (x = Ra)) +
+  geom_histogram()
+```
+
+##fit the lm model to Ra_log10 index
+
+```{r} 
+df4 <- subset(df,Year == '2019')
+
+mod <- lm(RA_sqDOY ~ day, data=df4)
+summary (mod)                                            
+plot(mod)
+ggplot(data = df4, aes(x = day, y = RA_sqDOY)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+```
+
+
+fit the model to Ra_sgDsJ1
+
+```{r} 
+df <- subset(df,Year == '2008')
+
 mod <- lm(Ra ~ day, data=nnoc_df)
 summary (mod)                                            
 plot(mod)
+ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=nnoc_df, aes (x = Ra)) +
+  geom_histogram()
 ```
+
+```{r} 
+df <- subset(df, Year == '2011'
+              )
+
+mod <- lm(Ra ~ day, data=df)
+summary (mod)                                            
+plot(mod)
+ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=nnoc_df, aes (x = Ra)) +
+  geom_histogram()
+```
+
+
+
+```{r} 
+nnoc_df <- subset(df, Year == '2014'
+              )
+
+mod <- lm(Ra ~ day, data=nnoc_df)
+summary (mod)                                            
+plot(mod)
+ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=nnoc_df, aes (x = Ra)) +
+  geom_histogram()
+```
+
+
+
+```{r} 
+nnoc_df <- subset(df, Year == '2019'
+              )
+
+mod <- lm(Ra ~ day, data=nnoc_df)
+summary (mod)                                            
+plot(mod)
+ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") 
+
+ggplot(data=nnoc_df, aes (x = Ra)) +
+  geom_histogram()
+```
+
+
+
 
 ```{r} 
 mod <- lm(W ~ day, data=nnoc_df)
@@ -311,9 +454,6 @@ nnoc_df$Ra_logW <- nnoc_df$Ra / log (nnoc_df$W)
 nnoc_df$Ra_sqrtday <- nnoc_df$Ra / sqrt (nnoc_df$day)
 nnoc_df$Ra_logday <- nnoc_df$Ra / log (nnoc_df$day)
 ```
-
-
-
 
 
 
@@ -447,7 +587,7 @@ rm(df_temp, df_gdu, GDU, gdu_by_years, i, k)
 
 
 ## Explore weather data
-We selected two periods that are supposed to be influential for bar growth: the *spring* (March 25 - May 24) as a pre-natal period for bat cups, and the *summer* (May 25 - Jut 24) as an early post-natal period prior to the inventory.
+We selected two periods that are supposed to be influential for bar growth: the *spring* (March 25 - May 24) as a pre-natal period for bat pups, and the *summer* (May 25 - June 24) as an early post-natal period prior to the captures.
 
 Since 2008 was a leap year, Julian days was different.
 What is March 25 for each year?
