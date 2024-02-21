@@ -4,7 +4,7 @@ author: "Alona"
 date: "2024-01-08"
 output: html_document
 ---
-#How weather conditions during pregnancy and lactation influence young bats development?
+#How weather conditions during pregnancy and lactation of bats influence subadult bats development?
 
 
 # Introduction
@@ -17,7 +17,9 @@ All animals after biometrical process were released as soon as possible. All mea
 
 
 Research question and predictions
-Does temperature (and rainfall) during period of pregnancy and lactation affect growth of young bats?Warmer and drier conditions lead to bigger sizes2 species, migrant and sedentary
+Does weather conditions during period of pregnancy and lactation affect growth of young bats? 
+Warmer and drier conditions lead to bigger sizes in bats
+
 
 
 ## Підготовка даних про довжину передпліччя Ra та вагу W кажанів
@@ -93,7 +95,6 @@ df <- subset(df,
 
 summary (df)
 ```
-
 
 
 ## Make synthetic growth indices
@@ -182,13 +183,28 @@ table(df$Year, df$Species)
 # Subset only some species (e.g., N.noc.)
 nnoc_df <- subset(df, 
               Species %in% c('Nyctalus noctula') & 
-                age == "sad"
+                age == "sad" & Year == '2019'
               )
 
 summary (nnoc_df)
 ```
 
-## Перевірка чи дані впродовж двох тижнів різняться
+## Перевірка чи дані по Ra та W впродовж двох тижнів різняться суттєво 
+## fit a linear regression to Ra and W.  Check if the Ra, W parametres changes with time aren't significant. So we can use it (for each year) as a one sample
+
+```{r} 
+mod <- lm(Ra ~ day, data=nnoc_df)
+summary (mod)                                            
+plot(mod)
+```
+
+```{r} 
+mod <- lm(W ~ day, data=nnoc_df)
+summary (mod)                                            
+plot(mod)
+```
+
+
 Instructions from https://tobiasroth.github.io/BDAEcology/lmer.html
 Additional beginner's guide https://rstudio-pubs-static.s3.amazonaws.com/63556_e35cc7e2dfb54a5bb551f3fa4b3ec4ae.html
 
