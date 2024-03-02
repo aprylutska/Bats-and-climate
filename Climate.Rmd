@@ -2,45 +2,67 @@
 title: "Climate"
 author: "Alona"
 date: "2024-01-08"
-output:
-  pdf_document: default
-  html_document: default
-  word_document: default
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 100
 ---
-#How weather conditions during pregnancy and lactation of bats influence subadult bats development?
 
+# How weather conditions during pregnancy and lactation of bats influence subadult bats development?
 
 # Material & Methods
-Bat Capture and Monitoring:
-Bats were captured during July in the years 2008, 2011, 2014, and 2019 as part of a bat monitoring program of the National Nature Park “Homilshansky lisy”, located in the Kharkiv Oblast, Ukraine. The capture methodology involved the use of nylon mist nets (12 х 3 meters, mesh size - 15 mm). Mist nets were consistently deployed at the same 9 locations each year of the monitoring. A total of 18 capture nights were conducted annually, with mist nets set from sunset until sunrise. Body weight measurements, rounded to the nearest 0.1 gram, and forearm length measurements, rounded to the nearest 0.1 millimeter, were obtained within 8-10 hours following the capture events.
 
-Data collected during the capture process included bat species identification, sex and age determination. Age classification was primarily based on the degree of ossification observed in the joints of the finger phalanx of the wing, the size and morphology of nipples for female bats, and for Nyctalus noctula specifically, the wear pattern of canine teeth. All captured bats underwent biometric assessments before being promptly released back into their natural habitat. All procedures involved in the capture, handling, and transportation of bats were conducted with strict adherence to ethical standards and principles of animal welfare and conservation, as outlined by Gannon (2007).
+## Bat Capture and Monitoring:
 
-Weather Data Acquisition and Analysis:
-Weather data, encompassing precipitation (Prcp), minimum temperature (Tmin), and maximum temperature (Tmax), for the study area were obtained using the easyclimate R package. Additional weather variables, including diurnal temperature range, mean daily temperature, positive daily temperature, and Growing Degree Units (the sum of mean daily temperatures above 0°C from the commencement of the year), were computed for further analysis.
+Bats were captured during July in the years 2008, 2011, 2014, and 2019 as part of a bat monitoring
+program of the National Nature Park “Homilshansky lisy”, located in the Kharkiv Oblast, Ukraine. The
+capture methodology involved the use of nylon mist nets (12 х 3 meters, mesh size - 15 mm). Mist
+nets were consistently deployed at the same 9 locations each year of the monitoring. A total of 18
+capture nights were conducted annually, with mist nets set from sunset until sunrise. Body weight
+measurements, rounded to the nearest 0.1 gram, and forearm length measurements, rounded to the
+nearest 0.1 millimeter, were obtained within 8-10 hours following the capture events.
 
-The analysis focused on two distinct periods deemed crucial for bat growth: the spring period, spanning from March 25th to May 24th, characterized as the pre-natal phase for bat pups, and the summer period, extending from May 25th to June 24th, considered as the early post-natal phase preceding the captures. Due to the occurrence of a leap year in 2008, adjustments were made for Julian days accordingly.
+Data collected during the capture process included bat species identification, sex and age
+determination. Age classification was primarily based on the degree of ossification observed in the
+joints of the finger phalanx of the wing, the size and morphology of nipples for female bats, and
+for *Nyctalus noctula* specifically, the wear pattern of canine teeth. All captured bats underwent
+biometric assessments before being promptly released back into their natural habitat. All procedures
+involved in the capture, handling, and transportation of bats were conducted with strict adherence
+to ethical standards and principles of animal welfare and conservation, as outlined by Gannon
+(2007).
 
-Research Question and Hypotheses:
-Whether weather conditions during the periods of pregnancy and lactation influence the growth of young bats? It was hypothesized that years characterized by warmer and drier conditions during spring would correspond to larger sizes in subadult bats.
+Weather Data Acquisition and Analysis: Weather data, encompassing precipitation (Prcp), minimum
+temperature (Tmin), and maximum temperature (Tmax), for the study area were obtained using the
+easyclimate R package. Additional weather variables, including diurnal temperature range, mean daily
+temperature, positive daily temperature, and Growing Degree Units (the sum of mean daily
+temperatures above 0°C from the commencement of the year), were computed for further analysis.
 
+The analysis focused on two distinct periods deemed crucial for bat growth: the spring period,
+spanning from March 25th to May 24th, characterized as the pre-natal phase for bat pups, and the
+summer period, extending from May 25th to June 24th, considered as the early post-natal phase
+preceding the captures. Due to the occurrence of a leap year in 2008, adjustments were made for
+Julian days accordingly.
 
-A total of 736 subadult bats from two species, Nyctalus noctula and Myotis daubentonii were taken for the analysis. 
+Research Question and Hypotheses: Whether weather conditions during the periods of pregnancy and
+lactation influence the growth of young bats? It was hypothesized that years characterized by warmer
+and drier conditions during spring would correspond to larger sizes in subadult bats.
 
-
+A total of 736 subadult bats from two species, Nyctalus noctula and Myotis daubentonii were taken
+for the analysis.
 
 ## Підготовка даних про довжину передпліччя Ra та вагу W кажанів
+
 Data preparation
 
-
-```{r, echo=FALSE, message=FALSE} 
+```{r, echo=FALSE, message=FALSE}
 rm(list = ls()) # reset R's brain
 library(lubridate)  
 library(ggplot2)
 library(tidyverse) # for data manipulations
 library(easyclimate) # for daily climate data extraction
 library(sf) # for spatial operations
-library(jtools)
+# library(patchwork)
+# library(jtools)
 
 # Loaded packages with their versions
 sessionInfo() # to check your locale
@@ -85,14 +107,14 @@ summary(df)
 
 ```
 
-
 Check age structure among species
+
 ```{r}
 table (df$Species,df$age)
 ```
 
+Select only subadult Noctule bats
 
-Відбираємо лише один вид та тільки молодих - вечірниці
 ```{r}
 # Subset only some species (e.g., N.noc. , M.daubentonii)
 df <- subset(df,
@@ -104,6 +126,17 @@ df <- subset(df,
 
 summary (df)
 ```
+
+Check how Ra changed with W
+```{r}
+ggplot(data = df, aes(Ra, W
+                      # , colour = Species
+                      )
+       ) +
+  geom_point() + 
+  geom_smooth(method = "lm") + theme_classic()
+```
+
 
 ## Make synthetic growth indices (index of body condition)
 
@@ -118,7 +151,7 @@ df$Ra_sqW <- df$Ra / sqrt(df$W)
 df$Ra_logW <- df$Ra / log(df$W)
 
 # Ra / square root of day-of-year
-df$RA_sqDOY <- df$Ra / sqrt(df$day)
+df$Ra_sqDOY <- df$Ra / sqrt(df$day)
 
 # log10 Ra
 df$Ra_log10 <- log10(df$Ra)
@@ -149,9 +182,9 @@ Jul_1st
 
 for(i in 1: nrow(df)){
     if(df$Year[i] == "2008"){
-    df$RA_sqDsJ1[i] <- df$Ra[i] / (df$day[i] - 183)
+    df$Ra_sqDsJ1[i] <- df$Ra[i] / (df$day[i] - 183)
     } else {
-      df$RA_sqDsJ1[i] <- df$Ra[i] / (df$day[i] - 182)
+      df$Ra_sqDsJ1[i] <- df$Ra[i] / (df$day[i] - 182)
     }
 }
 
@@ -161,41 +194,35 @@ for(i in 1: nrow(df)){
 
 
 
-```{r}
-ggplot(data = df, aes(Ra, W, colour = Species)) +
-  geom_point()
-```
+```{r, message=FALSE, warning=FALSE}
+# t ~ Ra
+p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  ggtitle("Ra ~ DOY") + 
+  theme_classic()
 
-## t ~ Ra
-
-```{r}
-ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
+# t ~ W
+p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  facet_wrap(vars(Species),
-             scales = "free") 
+  ggtitle("W ~ DOY") + 
+  theme_classic()
+
+p_Ra_day_4years
+p_W_day_4years
+
+rm(p_Ra_day_4years, p_W_day_4years)
 ```
 
-## t ~ W
+
+## Перевірка чи дані по Ra та W впродовж двох тижнів різняться суттєво
+
+
+
+## fit a linear regression to Ra and W. Check if the Ra, W parametres changes with time aren't significant. So we can use it (for each year) as a one sample
 
 ```{r}
-ggplot(data = df, aes(x = day, y = W, colour = Year)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_wrap(vars(Species),
-             scales = "free") 
-```
-
-sample
-```{r}
-table(df$Year, df$Species)
-```
-
-
-## Перевірка чи дані по Ra та W впродовж двох тижнів різняться суттєво 
-## fit a linear regression to Ra and W.  Check if the Ra, W parametres changes with time aren't significant. So we can use it (for each year) as a one sample
-
-```{r} 
 mod <- lm(Ra ~ day, data=subset(df,Year == '2008'))
 summary (mod)                                            
 plot(mod)
@@ -207,146 +234,116 @@ ggplot(data=subset(df,Year == '2008'), aes (x = Ra)) +
   geom_histogram()
 ```
 
+## Check different growth metrics for variation during inventory time
+Custom function to check dependency of selected growth metric on day across 4 years
 
-```{r} 
-mod <- lm(Ra ~ day, data=subset(df,Year == '2011'))
-summary (mod)                                            
-plot(mod)
-ggplot(data = subset(df,Year == '2011'), aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
+```{r}
+check_my_var <- function(data, dependent_var, independent_var) {
+  
+  formula <- formula(paste0(dependent_var, " ~ ", independent_var))
 
-ggplot(data=subset(df,Year == '2011'), aes (x = Ra)) +
-  geom_histogram()
+  years <- list("2008", "2011", "2014", "2019")
+  
+  yearly_stat <- list()
+  
+  for (i in 1:length(years)) {
+    
+    # Fit simple linear model
+    mod <- lm(formula = formula, data = data[data$Year == years[i],])
+    
+    # Get response coefficient
+    coef <- mod$coefficients[2]
+    
+    # Get p-value from model summary
+    p_val <- summary(mod)$coefficients[,"Pr(>|t|)"][2]
+    
+    yearly_stat[[i]] <- c(coef, p_val)
+    
+  }
+  
+  yearly_stat <- as.data.frame(t(as.data.frame(yearly_stat)))
+  rownames(yearly_stat) <- years
+  colnames(yearly_stat) <- c("Coefficient", "p_value")
+  
+  # yearly_stat$sign_level <- ifelse(yearly_stat$p-value > 0.05, 
+  #                                  " ", 
+  #                                  ifelse(yearly_stat$p-value <= 0.05 & yearly_stat$p-value > 0.01,
+  #                                         "*",
+  #                                         "***")
+  #                                  )
+  for (k in 1:nrow(yearly_stat)) {
+    
+    yearly_stat$sign_level[k] <- if(yearly_stat$p_value[k] > 0.05) {" "} else {"*"}
+    
+  }
+  
+  p <- ggplot(data = data, aes_string(x = independent_var, y = dependent_var)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    facet_wrap(vars(Year)) +
+    theme_classic()
+  
+  return(list(yearly_stat, p))
+}
+```
+
+### Ra
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra", "day")
 ```
 
 
-```{r} 
-mod <- lm(Ra ~ day, data=subset(df,Year == '2014'))
-summary (mod)                                            
-plot(mod)
-ggplot(data = subset(df,Year == '2014'), aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
+### W_Ra
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "W_Ra", "day")
+```
 
-ggplot(data=subset(df,Year == '2014'), aes (x = Ra)) +
-  geom_histogram()
+### Ra_sqW
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra_sqW", "day")
 ```
 
 
-
-```{r} 
-mod <- lm(Ra ~ day, data=subset(df,Year == '2019'))
-summary (mod)                                            
-plot(mod)
-ggplot(data = subset(df,Year == '2019'), aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
-
-ggplot(data=subset(df,Year == '2019'), aes (x = Ra)) +
-  geom_histogram()
+### Ra_logW
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra_logW", "day")
 ```
 
-##fit the lm model to Ra_log10 index
-
-```{r} 
-df4 <- subset(df,Year == '2019')
-
-mod <- lm(RA_sqDOY ~ day, data=df4)
-summary (mod)                                            
-plot(mod)
-ggplot(data = df4, aes(x = day, y = RA_sqDOY)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
-
+### Ra_sqW
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra_sqW", "day")
 ```
 
 
-fit the model to Ra_sgDsJ1
-
-```{r} 
-df <- subset(df,Year == '2008')
-
-mod <- lm(Ra ~ day, data=df)
-summary (mod)                                            
-plot(mod)
-ggplot(data = df, aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
-
-ggplot(data=nnoc_df, aes (x = Ra)) +
-  geom_histogram()
-```
-
-```{r} 
-df <- subset(df, Year == '2011'
-              )
-
-mod <- lm(Ra ~ day, data=df)
-summary (mod)                                            
-plot(mod)
-ggplot(data = df, aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
-
-ggplot(data=df, aes (x = Ra)) +
-  geom_histogram()
+### Ra_sqW
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra_sqW", "day")
 ```
 
 
-
-```{r} 
-nnoc_df <- subset(df, Year == '2014'
-              )
-
-mod <- lm(Ra ~ day, data=df)
-summary (mod)                                            
-plot(mod)
-ggplot(data = df, aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
-
-ggplot(data=nnoc_df, aes (x = Ra)) +
-  geom_histogram()
+### Ra_sqW
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra_sqW", "day")
 ```
 
 
-
-```{r} 
-nnoc_df <- subset(df, Year == '2019'
-              )
-
-mod <- lm(Ra ~ day, data=nnoc_df)
-summary (mod)                                            
-plot(mod)
-ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") 
-
-ggplot(data=nnoc_df, aes (x = Ra)) +
-  geom_histogram()
+### Ra_sqW
+```{r, warning=FALSE, message=FALSE}
+check_my_var(df, "Ra_sqW", "day")
 ```
 
+# Test null models of random effect of years on bat growth
 
-
-
-```{r} 
-mod <- lm(W ~ day, data=nnoc_df)
-summary (mod)                                            
-plot(mod)
-```
-
-
-Instructions from https://tobiasroth.github.io/BDAEcology/lmer.html
-Additional beginner's guide https://rstudio-pubs-static.s3.amazonaws.com/63556_e35cc7e2dfb54a5bb551f3fa4b3ec4ae.html
+Instructions from <https://tobiasroth.github.io/BDAEcology/lmer.html> Additional beginner's guide
+<https://rstudio-pubs-static.s3.amazonaws.com/63556_e35cc7e2dfb54a5bb551f3fa4b3ec4ae.html>
 
 ```{r, message=FALSE}
 library (lme4)
 # `lme4` requires `Matrix` >= 1.6-4. See for more details https://community.rstudio.com/t/error-in-initializeptr-function-cholmod-factor-ldeta-not-provided-by-package-matrix/178694
 ```
 
-
 Null-model (random effect only)
+
 ```{r}
 mod0Ra <- lmer (Ra ~ 1 + (1|Year),
              data=nnoc_df
@@ -356,18 +353,19 @@ mod0Ra <- lmer (Ra ~ 1 + (1|Year),
 summary (mod0Ra)
 ```
 
-
 ```{r}
 summ(mod0Ra)
 ```
 
 To test the variance of intersepts
+
 ```{r}
 library(lmerTest)
 ranova(mod0Ra)
 ```
 
 Model with one fixed effect - time (as day from the beginning of year)
+
 ```{r}
 mod1Ra <- lmer (Ra ~ day + (1 |Year),
              data=nnoc_df
@@ -377,13 +375,13 @@ mod1Ra <- lmer (Ra ~ day + (1 |Year),
 summary (mod1Ra)
 ```
 
-
 ```{r}
 library(jtools)
 summ(mod1Ra)
 ```
 
 Tp test the variance of intersepts
+
 ```{r}
 library(lmerTest)
 ranova(mod1Ra)
@@ -393,9 +391,9 @@ ranova(mod1Ra)
 plot (mod1Ra)
 ```
 
-## t ~ W
-Make a model with Weight gata of subadult bast 
-Null-model (random effect only)
+## t \~ W
+
+Make a model with Weight gata of subadult bast Null-model (random effect only)
 
 ```{r}
 mod0_W <- lmer (W ~ 1 + (1|Year),
@@ -408,6 +406,7 @@ summ(mod0_W)
 ```
 
 Model weight with one fixed effect - time (as day from the beginning of year)
+
 ```{r}
 mod1W <- lmer (W ~ day + (1 |Year),
              data=nnoc_df
@@ -435,7 +434,9 @@ ggplot(data = df, aes(x = day, y = W, colour = Year)) +
 ```
 
 ## Model for body condition Ra-W
+
 створення нової колонки з даними про співідношення Ra до W
+
 ```{r}
 nnoc_df$Ra_W <- nnoc_df$Ra / nnoc_df$W
 nnoc_df$Ra_sqrtW <- nnoc_df$Ra / sqrt (nnoc_df$W)
@@ -444,18 +445,12 @@ nnoc_df$Ra_sqrtday <- nnoc_df$Ra / sqrt (nnoc_df$day)
 nnoc_df$Ra_logday <- nnoc_df$Ra / log (nnoc_df$day)
 ```
 
-
-
-
-
-
 ## Generate weather data
+
 ```{r}
 # Take a look at the timespan
 summary(df$date)
 ```
-
-
 
 ```{r eval=FALSE, echo=FALSE, message=FALSE}
 # # Create data frame with point coordinates
@@ -483,10 +478,11 @@ summary(df$date)
 load(file = "daily_weather_2008-2019.Rdata")
 ```
 
-
 ### Calculate additional weather variables
+
 Calculate derived metrics (diurnial range, mean daily temperature, positive daily temperature).
 Subset only years of inventory (2008, 2011, 2014, 2019)
+
 ```{r}
 daily <- daily %>% 
    # Calculate derived metrics for each day
@@ -503,8 +499,10 @@ daily <- daily %>%
 ```
 
 ### Calculate GDU
-Growing degree units (Sum of the mean daily temperature above 0 from the start of the year).
-Create custom function that calculate GDUs for each day of the year.
+
+Growing degree units (Sum of the mean daily temperature above 0 from the start of the year). Create
+custom function that calculate GDUs for each day of the year.
+
 ```{r}
 # Must be calculated for each year separately.
 # Data must contain one row per day and the variable with the positive daily mean temperature.
@@ -530,6 +528,7 @@ gdu <- function(daily_data_for_one_year,
 ```
 
 Calculate GDU and add it to the main weather data frame.
+
 ```{r}
 # List all required years
 list_of_years <- c(2008, 2011, 2014, 2019)
@@ -573,13 +572,14 @@ daily <- daily %>%
 rm(df_temp, df_gdu, GDU, gdu_by_years, i, k)
 ```
 
-
-
 ## Explore weather data
-We selected two periods that are supposed to be influential for bar growth: the *spring* (March 25 - May 24) as a pre-natal period for bat pups, and the *summer* (May 25 - June 24) as an early post-natal period prior to the captures.
 
-Since 2008 was a leap year, Julian days was different.
-What is March 25 for each year?
+We selected two periods that are supposed to be influential for bar growth: the *spring* (March 25 -
+May 24) as a pre-natal period for bat pups, and the *summer* (May 25 - June 24) as an early
+post-natal period prior to the captures.
+
+Since 2008 was a leap year, Julian days was different. What is March 25 for each year?
+
 ```{r}
 daily %>% 
   mutate(day = lubridate::yday(date)) %>% 
@@ -588,8 +588,8 @@ daily %>%
   unique()
 ```
 
-
 Excluding dates out of those two periods
+
 ```{r}
 # Pre-natal (spring) periods only
 daily %>% 
@@ -633,9 +633,8 @@ rm(spring2008, spring2011, spring2014, spring2019,
    summer2008, summer2011, summer2014, summer2019)
 ```
 
-
-
 Take a look at the minimal temperatures for springs in 2008-2019
+
 ```{r}
 daily_spring_summer %>% 
   filter(season == "spring") %>% 
@@ -652,6 +651,7 @@ ggsave("./figures/Tmin_2008-2019_density_Spring.png", width = 16, height = 12, u
 ```
 
 Take a look at the minimal temperatures for summers in 2008-2019
+
 ```{r}
 daily_spring_summer |>
   filter(season == "summer") %>% 
@@ -667,9 +667,7 @@ daily_spring_summer |>
 ggsave("./figures/Tmin_2008-2019_density_Apr.png", width = 16, height = 12, units = "cm", dpi = 150)
 ```
 
-
-
-## Generate exploratory variables for bat growth ~ weather models
+## Generate exploratory variables for bat growth \~ weather models
 
 ```{r}
 # Cumulative precipitation
@@ -750,12 +748,8 @@ rm(Prcp_spring, Prcp_var, Prcp_summer, Tmin_spring, Tmin_summer, Tmin_var,
 
 ```
 
-
-
-
-
-
 Merge weather data with bat survey data and save it for further sessions
+
 ```{r}
 # Merge data
 df_clim <- df %>% 
