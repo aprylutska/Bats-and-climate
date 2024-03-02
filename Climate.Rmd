@@ -12,13 +12,12 @@ output:
 
 # Material & Methods
 Bat Capture and Monitoring:
-Bats were captured during the month of July in the years 2008, 2011, 2014, and 2019 as part of a bat monitoring program of the National Nature Park “Homilshansky lisy”, located in the Kharkiv Oblast, Ukraine. The capture methodology involved the use of nylon mist nets (12 meters in length and 3 meters in height, with a mesh size of 15 mm). Nets were consistently deployed at the same locations each year. A total of 18 capture nights were conducted annually, with mist nets set from sunset until sunrise. Body weight measurements, rounded to the nearest 0.1 gram, and forearm length measurements, rounded to the nearest 0.1 millimeter, were obtained within 8-10 hours following the capture events.
+Bats were captured during July in the years 2008, 2011, 2014, and 2019 as part of a bat monitoring program of the National Nature Park “Homilshansky lisy”, located in the Kharkiv Oblast, Ukraine. The capture methodology involved the use of nylon mist nets (12 х 3 meters, mesh size - 15 mm). Mist nets were consistently deployed at the same 9 locations each year of the monitoring. A total of 18 capture nights were conducted annually, with mist nets set from sunset until sunrise. Body weight measurements, rounded to the nearest 0.1 gram, and forearm length measurements, rounded to the nearest 0.1 millimeter, were obtained within 8-10 hours following the capture events.
 
-Data collected during the capture process included species identification, sex and age determination. Age classification was primarily based on the degree of ossification observed in the joints of the finger phalanx of the wing, the size and morphology of nipples for female bats, and for Nyctalus noctula specifically, the wear pattern of canine teeth. All captured bats underwent biometric assessments before being promptly released back into their natural habitat. All procedures involved in the capture, handling, and transportation of bats were conducted with strict adherence to ethical standards and principles of animal welfare and conservation, as outlined by Gannon (2007).
+Data collected during the capture process included bat species identification, sex and age determination. Age classification was primarily based on the degree of ossification observed in the joints of the finger phalanx of the wing, the size and morphology of nipples for female bats, and for Nyctalus noctula specifically, the wear pattern of canine teeth. All captured bats underwent biometric assessments before being promptly released back into their natural habitat. All procedures involved in the capture, handling, and transportation of bats were conducted with strict adherence to ethical standards and principles of animal welfare and conservation, as outlined by Gannon (2007).
 
 Weather Data Acquisition and Analysis:
 Weather data, encompassing precipitation (Prcp), minimum temperature (Tmin), and maximum temperature (Tmax), for the study area were obtained using the easyclimate R package. Additional weather variables, including diurnal temperature range, mean daily temperature, positive daily temperature, and Growing Degree Units (the sum of mean daily temperatures above 0°C from the commencement of the year), were computed for further analysis.
-
 
 The analysis focused on two distinct periods deemed crucial for bat growth: the spring period, spanning from March 25th to May 24th, characterized as the pre-natal phase for bat pups, and the summer period, extending from May 25th to June 24th, considered as the early post-natal phase preceding the captures. Due to the occurrence of a leap year in 2008, adjustments were made for Julian days accordingly.
 
@@ -34,7 +33,7 @@ A total of 736 subadult bats from two species, Nyctalus noctula and Myotis daube
 Data preparation
 
 
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE, message=FALSE} 
 rm(list = ls()) # reset R's brain
 library(lubridate)  
 library(ggplot2)
@@ -145,7 +144,7 @@ Jul_1st
 ```
 
 ```{r}
-# Only 2008 as a leap year, so we can calculate ration with zero-day using
+# Only 2008 as a leap year, so we can calculate ratio with zero-day using
 # the following loop:
 
 for(i in 1: nrow(df)){
@@ -197,64 +196,54 @@ table(df$Year, df$Species)
 ## fit a linear regression to Ra and W.  Check if the Ra, W parametres changes with time aren't significant. So we can use it (for each year) as a one sample
 
 ```{r} 
-df1 <- subset(df,Year == '2008')
-
-mod <- lm(Ra ~ day, data=df1)
+mod <- lm(Ra ~ day, data=subset(df,Year == '2008'))
 summary (mod)                                            
 plot(mod)
-ggplot(data = df1, aes(x = day, y = Ra)) +
+ggplot(data = subset(df,Year == '2008'), aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
-ggplot(data=df1, aes (x = Ra)) +
+ggplot(data=subset(df,Year == '2008'), aes (x = Ra)) +
   geom_histogram()
 ```
 
 
 ```{r} 
-df2 <- subset(df,Year == '2011')
-
-mod <- lm(Ra ~ day, data = df2)
+mod <- lm(Ra ~ day, data=subset(df,Year == '2011'))
 summary (mod)                                            
 plot(mod)
-ggplot(data = df2, aes(x = day, y = Ra)) +
+ggplot(data = subset(df,Year == '2011'), aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
-ggplot(data=df2, aes (x = Ra)) +
+ggplot(data=subset(df,Year == '2011'), aes (x = Ra)) +
   geom_histogram()
 ```
 
 
 ```{r} 
-df3 <- subset(df, Year == '2014'
-              )
-
-mod <- lm(Ra ~ day, data=df3)
+mod <- lm(Ra ~ day, data=subset(df,Year == '2014'))
 summary (mod)                                            
 plot(mod)
-ggplot(data = df3, aes(x = day, y = Ra)) +
+ggplot(data = subset(df,Year == '2014'), aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
-ggplot(data=df3, aes (x = Ra)) +
+ggplot(data=subset(df,Year == '2014'), aes (x = Ra)) +
   geom_histogram()
 ```
 
 
 
 ```{r} 
-df4 <- subset(df, Year == '2019'
-              )
-
-mod <- lm(Ra ~ day, data=df4)
+mod <- lm(Ra ~ day, data=subset(df,Year == '2019'))
 summary (mod)                                            
 plot(mod)
-ggplot(data = df4, aes(x = day, y = Ra)) +
+ggplot(data = subset(df,Year == '2019'), aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
-ggplot(data=df4, aes (x = Ra)) +
+ggplot(data=subset(df,Year == '2019'), aes (x = Ra)) +
   geom_histogram()
 ```
 
@@ -278,10 +267,10 @@ fit the model to Ra_sgDsJ1
 ```{r} 
 df <- subset(df,Year == '2008')
 
-mod <- lm(Ra ~ day, data=nnoc_df)
+mod <- lm(Ra ~ day, data=df)
 summary (mod)                                            
 plot(mod)
-ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+ggplot(data = df, aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
@@ -296,11 +285,11 @@ df <- subset(df, Year == '2011'
 mod <- lm(Ra ~ day, data=df)
 summary (mod)                                            
 plot(mod)
-ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+ggplot(data = df, aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
-ggplot(data=nnoc_df, aes (x = Ra)) +
+ggplot(data=df, aes (x = Ra)) +
   geom_histogram()
 ```
 
@@ -310,10 +299,10 @@ ggplot(data=nnoc_df, aes (x = Ra)) +
 nnoc_df <- subset(df, Year == '2014'
               )
 
-mod <- lm(Ra ~ day, data=nnoc_df)
+mod <- lm(Ra ~ day, data=df)
 summary (mod)                                            
 plot(mod)
-ggplot(data = nnoc_df, aes(x = day, y = Ra)) +
+ggplot(data = df, aes(x = day, y = Ra)) +
   geom_point() +
   geom_smooth(method = "lm") 
 
