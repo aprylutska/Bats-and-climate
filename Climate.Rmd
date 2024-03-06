@@ -41,7 +41,7 @@ library(tidyverse) # for data manipulations
 library(easyclimate) # for daily climate data extraction
 library(sf) # for spatial operations
 # library(patchwork)
-# library(jtools)
+library(jtools)
 
 # Set custom theme for ggplot2 plots
 mytheme <- theme_bw() +
@@ -86,6 +86,9 @@ df$W <-as.numeric (df$W)
 df$Data <- NULL
 df$reproductive.status <- NULL
 
+# Drop rows with NAs in W and Ra
+df <- df[!is.na(df$W) & !is.na(df$Ra),]
+
 # Take a look at the data
 summary(df)
 
@@ -110,6 +113,19 @@ df <- subset(df,
 
 summary (df)
 ```
+
+Choose more than 10 bats in a sample day
+
+```{r}
+df <- df |> 
+  # count bats per day
+  count(date) |>
+  # choose days where more than 10 bats
+  filter(n > 10) |> 
+  # subset with days where more than 10 bats
+  inner_join(df)
+```
+
 
 ## Exploration of the dynamics of growth metrics 
 
@@ -183,6 +199,14 @@ p_W_day_4years
 rm(p_Ra_day_4years, p_W_day_4years)
 ```
 
+```{r}
+ggplot(df, aes(day)) +
+  geom_histogram() +
+  facet_wrap(vars(Year))
+
+```
+
+
 
 As we can see, Ra remains constant over inventory period, and probably doesn't differ among years (need statistical testing, but gives a hint from the plot). Weight, instead, (i) differs among years, and (ii) grows over the inventory period.
 
@@ -195,9 +219,6 @@ Scaled mass index - SMI [Peig and Green 2009](https://nsojournals.onlinelibrary.
 Residual index (residuals of body mass-forearm length regression). Residuals from a linear regression of the logarithmically transformed weigth (W) against the logarithm of the day-of-the-year (day), for each bat individual.
 
 ```{r}
-# Drop rows with NAs in W
-df <- df[!is.na(df$W),]
-
 # Fit simple linear model
 mod <- lm(log(W) ~ log(day), data = df)
 
@@ -324,7 +345,7 @@ Null-model (random effect only)
 
 ```{r}
 mod0Ra <- lmer (Ra ~ 1 + (1|Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -341,6 +362,29 @@ To test the variance of intersepts
 library(lmerTest)
 ranova(mod0Ra)
 ```
+
+
+
+```{r}
+mod0BCI <- lmer (BCI ~ 1 + (1|Year),
+             data=df
+             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
+             )
+
+summary (mod0BCI)
+
+summ(mod0BCI)
+```
+
+To test the variance of intersepts
+
+```{r}
+library(lmerTest)
+ranova(mod0Ra)
+```
+
+
+
 
 Model with one fixed effect - time (as day from the beginning of year)
 
@@ -368,6 +412,10 @@ ranova(mod1Ra)
 ```{r}
 plot (mod1Ra)
 ```
+
+
+
+
 
 ## t \~ W
 
@@ -411,17 +459,13 @@ ggplot(data = df, aes(x = day, y = W, colour = Year)) +
              scales = "free") 
 ```
 
-## Model for body condition Ra-W
-
-створення нової колонки з даними про співідношення Ra до W
-
 ```{r}
-nnoc_df$Ra_W <- nnoc_df$Ra / nnoc_df$W
-nnoc_df$Ra_sqrtW <- nnoc_df$Ra / sqrt (nnoc_df$W)
-nnoc_df$Ra_logW <- nnoc_df$Ra / log (nnoc_df$W)
-nnoc_df$Ra_sqrtday <- nnoc_df$Ra / sqrt (nnoc_df$day)
-nnoc_df$Ra_logday <- nnoc_df$Ra / log (nnoc_df$day)
+mod1 <-  lm(BCI ~ Year, data = df)
+
+summary (mod1)
 ```
+
+
 
 ## Generate weather data
 
