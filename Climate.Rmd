@@ -1,7 +1,7 @@
 ---
 title: "Climate"
-author: "Alona"
-date: "2024-01-08"
+author: "Alona Prylutska"
+date: "2024-03-08"
 output: html_document
 # editor_options: 
 #   markdown: 
@@ -29,11 +29,10 @@ Research Question and Hypotheses: Whether weather conditions during the periods 
 
 A total of 736 subadult bats from two species, Nyctalus noctula and Myotis daubentonii were taken for the analysis.
 
-## Підготовка даних про довжину передпліччя Ra та вагу W кажанів
+## Data preparation
+Setting up a session
 
-Data preparation
-
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE}
 rm(list = ls()) # reset R's brain
 library(lubridate)  
 library(ggplot2)
@@ -48,9 +47,6 @@ mytheme <- theme_bw() +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
 
-# Loaded packages with their versions
-sessionInfo() # to check your locale
-
 # if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
 # To fix that, you need to re-map locate into US (will be back after restart R session)
 
@@ -58,9 +54,8 @@ sessionInfo() # to check your locale
 # Sys.setlocale("LC_TIME", "en_US.UTF-8") # for Linux
 # Sys.setlocale("LC_TIME", "English") # for Windows
 
-```
 
-```{r}
+# Read data and prepare it for further analyses
 df <- read.csv("Homolsha_all_years.csv") # read data from *.csv file
 
 # Set variables classes
@@ -89,14 +84,17 @@ df$reproductive.status <- NULL
 # Drop rows with NAs in W and Ra
 df <- df[!is.na(df$W) & !is.na(df$Ra),]
 
-# Take a look at the data
-summary(df)
+# Loaded packages with their versions
+sessionInfo() # to check your locale
+```
 
+Take a look at the data
+```{r}
+summary(df)
 ```
 
 Check age structure among species
-
-```{r}
+```{r, echo=FALSE}
 table (df$Species,df$age)
 ```
 
@@ -114,7 +112,7 @@ df <- subset(df,
 summary (df)
 ```
 
-Choose more than 10 bats in a sample day
+Since we have nights ("days") with very few bats captured, we decided to drop the nights with less then 10 bats.
 
 ```{r}
 df <- df |> 
@@ -128,7 +126,6 @@ df <- df |>
 
 
 ## Exploration of the dynamics of growth metrics 
-
 How Ra related to W?
 
 ```{r, message=FALSE, warning=FALSE}
@@ -138,6 +135,8 @@ ggplot(data = df, aes(Ra, W
        ) +
   geom_point(alpha = 0.5) + 
   geom_smooth(method = "lm", aes(fill = Year)) + 
+  labs(x = "Forearm length, mm",
+       y = "Weight, g") +
   # facet_wrap(vars(sex)) +
   mytheme
 ```
@@ -145,52 +144,57 @@ ggplot(data = df, aes(Ra, W
 Bats with bigger forearm (Ra) have higher mass (W), and vice versa, regardless of year of capture.
 
 Is there any sex differences in growth metrics? Is that possible that male and female bats growth different?
-```{r}
+```{r, echo=FALSE}
 ggplot(data = df, aes(sex, Ra)) +
   geom_violin() + 
-  labs(title = "Ra") +
+  labs(title = "Forearm length",
+       y = "Forearm length, mm") +
   mytheme
 
 ggplot(data = df, aes(sex, W)) +
   geom_violin() + 
-  labs(title = "W") +
+  labs(title = "Weight",
+       y = "Weight, g") +
   mytheme
 ```
 
-Ra might be slightly sex-dependent, W does not show such pattern.
-
+Ra might be slightly sex-dependent, Weight does not show such pattern.
 
 Does Ra or W seem to be different among years?
-```{r}
+```{r, echo=FALSE}
 ggplot(data = df, aes(Year, Ra)) +
   geom_violin() + 
-  labs(title = "Ra") +
+  labs(title = "Forearm length",
+       y = "Ra, mm") +
   mytheme
 
 ggplot(data = df, aes(Year, W)) +
   geom_violin() + 
-  labs(title = "W") +
+  labs(title = "Weight",
+       y = "W, g") +
   mytheme
 ```
 
 In our data set, Ra seems to be constant across the years of survey. Contrary, W tends to vary among years. Therefore, to test our hypothesis about spring weather effect on bat growth, we must apply weight-related metric of growth, not Ra-related.
 
 
-Does Ra or W changes aver the inventory time?
+Does Ra or W changes over the inventory time?
 
 ```{r, message=FALSE, warning=FALSE}
 # t ~ Ra
 p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
   geom_point() +
   geom_smooth(method = "lm", aes(fill = Year)) + 
-  ggtitle("Ra ~ DOY") + 
+  labs(title = "Ra ~ DOY",
+       y = "Forearm length, mm") +
   mytheme
 
 # t ~ W
 p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
   geom_point() +
   geom_smooth(method = "lm", aes(fill = Year)) +
-  ggtitle("W ~ DOY") + 
+  labs(title = "W ~ DOY",
+       y = "Weight, g") + 
   mytheme
 
 p_Ra_day_4years
@@ -199,24 +203,23 @@ p_W_day_4years
 rm(p_Ra_day_4years, p_W_day_4years)
 ```
 
-```{r}
-ggplot(df, aes(day)) +
-  geom_histogram() +
-  facet_wrap(vars(Year))
-
-```
-
-
-
 As we can see, Ra remains constant over inventory period, and probably doesn't differ among years (need statistical testing, but gives a hint from the plot). Weight, instead, (i) differs among years, and (ii) grows over the inventory period.
 
 In other words, bats captured later might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated series of synthetic growth metrics, and test their variation over the inventory period and between the years.
 
-Body condition index (BCI)
+Check how many bats we captured during the night
+```{r, echo=FALSE, message=FALSE}
+ggplot(df, aes(day)) +
+  geom_histogram() +
+  labs(x = "Day of the year",
+       y = "Number of bats") +
+  facet_wrap(vars(Year)) +
+  mytheme
+```
 
-Scaled mass index - SMI [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
-Residual index (residuals of body mass-forearm length regression). Residuals from a linear regression of the logarithmically transformed weigth (W) against the logarithm of the day-of-the-year (day), for each bat individual.
+
+Since weight seems to grows during inventory, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body condition index (BCI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
 
 ```{r}
 # Fit simple linear model
@@ -228,6 +231,8 @@ df$BCI <- residuals(mod)
 # Drop unused variables
 rm(mod)
 ```
+
+That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
 
 ## Check different growth metrics for variation during inventory time
@@ -305,31 +310,28 @@ W strongly related to the time of capture.
 check_my_var(df, "BCI", "day")
 ```
 
-BCI doesn't related to the time of caption, as it was expected from the method of calculation.
+BCI is weakly related to the time of caption, as it was expected from the method of calculation.
 
-
-```{r}
+BCI showed visual differences among years, suggesting bats grow differently depending on year-specific effects.
+```{r, echo=FALSE}
 ggplot(data = df, aes(Year, BCI)) +
   geom_violin() + 
-  labs(title = "BCI") +
+  labs(y = "Body Condition Index") +
   mytheme
 ```
 
-Also, BCI seems to differ for Noctule bats across the years.
-
-
+For Homilsha Forest inventory data, 2014 seems to have insufficient number of nights when 10 or more Noctule bat individuals were captured - possibly we should remove it from further analyses.
 ```{r, message=FALSE}
-ggplot(data = df, aes(day, BCI
-                      , colour = Year
-                      )
-       ) +
+ggplot(data = df, aes(day, BCI, colour = Year)) +
   geom_point(alpha = 0.5) + 
   geom_smooth(method = "lm", aes(fill = Year)) + 
+  labs(x = "Day of the year",
+       y = "Body Condition Index") +
   # facet_wrap(vars(sex)) +
   mytheme
 ```
 
-Therefore, we choose BCI, as residuals from a linear regression of the logarithmically transformed weigth (W) against the logarithm of the day-of-the-year (day), for each bat individual, as a basic growth metric (response variable) in our research.
+Therefore, we choose to test two alternative response variables - forearm length (Ra) and Body Condition Index (BCI), as a possible growth metric in our research.
 
 
 # Test null models of random effect of years on bat growth
@@ -390,7 +392,7 @@ Model with one fixed effect - time (as day from the beginning of year)
 
 ```{r}
 mod1Ra <- lmer (Ra ~ day + (1 |Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -423,7 +425,7 @@ Make a model with Weight gata of subadult bast Null-model (random effect only)
 
 ```{r}
 mod0_W <- lmer (W ~ 1 + (1|Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -435,7 +437,7 @@ Model weight with one fixed effect - time (as day from the beginning of year)
 
 ```{r}
 mod1W <- lmer (W ~ day + (1 |Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
