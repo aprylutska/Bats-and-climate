@@ -639,7 +639,7 @@ Null-model (random effect only)
 
 ```{r}
 mod0Ra <- lmer (Ra ~ 1 + (1|Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -657,11 +657,34 @@ library(lmerTest)
 ranova(mod0Ra)
 ```
 
+
+
+```{r}
+mod0BCI <- lmer (BCI ~ 1 + (1|Year),
+             data=df
+             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
+             )
+
+summary (mod0BCI)
+
+summ(mod0BCI)
+```
+
+To test the variance of intersepts
+
+```{r}
+library(lmerTest)
+ranova(mod0Ra)
+```
+
+
+
+
 Model with one fixed effect - time (as day from the beginning of year)
 
 ```{r}
 mod1Ra <- lmer (Ra ~ day + (1 |Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -684,13 +707,17 @@ ranova(mod1Ra)
 plot (mod1Ra)
 ```
 
+
+
+
+
 ## t \~ W
 
 Make a model with Weight gata of subadult bast Null-model (random effect only)
 
 ```{r}
 mod0_W <- lmer (W ~ 1 + (1|Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -702,7 +729,7 @@ Model weight with one fixed effect - time (as day from the beginning of year)
 
 ```{r}
 mod1W <- lmer (W ~ day + (1 |Year),
-             data=nnoc_df
+             data=df
              # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
              )
 
@@ -726,17 +753,12 @@ ggplot(data = df, aes(x = day, y = W, colour = Year)) +
              scales = "free") 
 ```
 
-## Model for body condition Ra-W
-
-створення нової колонки з даними про співідношення Ra до W
-
 ```{r}
-nnoc_df$Ra_W <- nnoc_df$Ra / nnoc_df$W
-nnoc_df$Ra_sqrtW <- nnoc_df$Ra / sqrt (nnoc_df$W)
-nnoc_df$Ra_logW <- nnoc_df$Ra / log (nnoc_df$W)
-nnoc_df$Ra_sqrtday <- nnoc_df$Ra / sqrt (nnoc_df$day)
-nnoc_df$Ra_logday <- nnoc_df$Ra / log (nnoc_df$day)
+mod1 <-  lm(BCI ~ Year, data = df)
+
+summary (mod1)
 ```
+
 
 ## Generate weather data
 

@@ -1,7 +1,7 @@
 ---
-title: "Climate"
+title: "Effects of spring weather conditions on bat growth"
 author: "Alona Prylutska"
-date: "2024-03-08"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 # editor_options: 
 #   markdown: 
@@ -15,7 +15,7 @@ check, within a subadults of Noctule bats, if there are differences in growth ra
 We also looked for optimal growth metric covered infra-survey variation. 
 
 # Material & Methods
-## Bat Capture and Monitoring:
+## Bat Capture and Monitoring
 
 Bats were captured during July in the years 2008, 2011, 2014, and 2019 as part of a bat monitoring program of the National Nature Park “Homilshansky lisy”, located in the Kharkiv Oblast, Ukraine. The capture methodology involved the use of nylon mist nets (12 х 3 meters, mesh size - 15 mm). Mist nets were consistently deployed at the same 9 locations each year of the monitoring. A total of 18 capture nights were conducted annually, with mist nets set from sunset until sunrise. Body weight measurements, rounded to the nearest 0.1 gram, and forearm length measurements, rounded to the nearest 0.1 millimeter, were obtained within 8-10 hours following the capture events.
 
@@ -39,13 +39,16 @@ library(ggplot2)
 library(tidyverse) # for data manipulations
 library(easyclimate) # for daily climate data extraction
 library(sf) # for spatial operations
-# library(patchwork)
+library(gridExtra) # for ggplot plates
 library(jtools)
 
 # Set custom theme for ggplot2 plots
 mytheme <- theme_bw() +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
+
+# Set custom theme as a default for all ggplot below
+theme_set(mytheme)
 
 # if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
 # To fix that, you need to re-map locate into US (will be back after restart R session)
@@ -55,191 +58,7 @@ mytheme <- theme_bw() +
 # Sys.setlocale("LC_TIME", "English") # for Windows
 
 
-# Read data and prepare it for further analyses
-df <- read.csv("Homolsha_all_years.csv") # read data from *.csv file
-
-# Set variables classes
-df$date <- as.Date(df$Data, "%d.%m.%Y") # convert date to R Data format
-df$Place <- as.factor(df$Place)
-df$Species <- as.factor(df$Species)
-df$sex <- as.factor(df$sex)
-df$age <- as.factor(df$age)
-
-df$Year <- year(df$date) #виокремлення року
-df$Year <-as.factor (df$Year)
-#створення нової колонки з даними про день від початку року 
-df$day <- yday(df$date)
-
-
-df$Ra <- sub(",", ".", df$Ra) #заміна ком на крапки в промірах передпліччя
-df$W <- sub(",", ".", df$W)
-
-df$Ra <-as.numeric (df$Ra) #присвоєння промірам нумеричного типу даних
-df$W <-as.numeric (df$W)
-
-# Delete unused variables
-df$Data <- NULL
-df$reproductive.status <- NULL
-
-# Drop rows with NAs in W and Ra
-df <- df[!is.na(df$W) & !is.na(df$Ra),]
-
-# Loaded packages with their versions
-sessionInfo() # to check your locale
-```
-
-Take a look at the data
-```{r}
-summary(df)
-```
-
-Check age structure among species
-```{r, echo=FALSE}
-table (df$Species,df$age)
-```
-
-Select only subadult Noctule bats
-
-```{r}
-# Subset only some species (e.g., N.noc. , M.daubentonii)
-df <- subset(df,
-              Species %in% c('Nyctalus noctula'
-                              #,'Myotis daubentonii'
-                             ) &
-                age == "sad"
-              )
-
-summary (df)
-```
-
-Since we have nights ("days") with very few bats captured, we decided to drop the nights with less then 10 bats.
-
-```{r}
-df <- df |> 
-  # count bats per day
-  count(date) |>
-  # choose days where more than 10 bats
-  filter(n > 10) |> 
-  # subset with days where more than 10 bats
-  inner_join(df)
-```
-
-
-## Exploration of the dynamics of growth metrics 
-How Ra related to W?
-
-```{r, message=FALSE, warning=FALSE}
-ggplot(data = df, aes(Ra, W
-                      , colour = Year
-                      )
-       ) +
-  geom_point(alpha = 0.5) + 
-  geom_smooth(method = "lm", aes(fill = Year)) + 
-  labs(x = "Forearm length, mm",
-       y = "Weight, g") +
-  # facet_wrap(vars(sex)) +
-  mytheme
-```
-
-Bats with bigger forearm (Ra) have higher mass (W), and vice versa, regardless of year of capture.
-
-Is there any sex differences in growth metrics? Is that possible that male and female bats growth different?
-```{r, echo=FALSE}
-ggplot(data = df, aes(sex, Ra)) +
-  geom_violin() + 
-  labs(title = "Forearm length",
-       y = "Forearm length, mm") +
-  mytheme
-
-ggplot(data = df, aes(sex, W)) +
-  geom_violin() + 
-  labs(title = "Weight",
-       y = "Weight, g") +
-  mytheme
-```
-
-Ra might be slightly sex-dependent, Weight does not show such pattern.
-
-Does Ra or W seem to be different among years?
-```{r, echo=FALSE}
-ggplot(data = df, aes(Year, Ra)) +
-  geom_violin() + 
-  labs(title = "Forearm length",
-       y = "Ra, mm") +
-  mytheme
-
-ggplot(data = df, aes(Year, W)) +
-  geom_violin() + 
-  labs(title = "Weight",
-       y = "W, g") +
-  mytheme
-```
-
-In our data set, Ra seems to be constant across the years of survey. Contrary, W tends to vary among years. Therefore, to test our hypothesis about spring weather effect on bat growth, we must apply weight-related metric of growth, not Ra-related.
-
-
-Does Ra or W changes over the inventory time?
-
-```{r, message=FALSE, warning=FALSE}
-# t ~ Ra
-p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(fill = Year)) + 
-  labs(title = "Ra ~ DOY",
-       y = "Forearm length, mm") +
-  mytheme
-
-# t ~ W
-p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(fill = Year)) +
-  labs(title = "W ~ DOY",
-       y = "Weight, g") + 
-  mytheme
-
-p_Ra_day_4years
-p_W_day_4years
-
-rm(p_Ra_day_4years, p_W_day_4years)
-```
-
-As we can see, Ra remains constant over inventory period, and probably doesn't differ among years (need statistical testing, but gives a hint from the plot). Weight, instead, (i) differs among years, and (ii) grows over the inventory period.
-
-In other words, bats captured later might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated series of synthetic growth metrics, and test their variation over the inventory period and between the years.
-
-Check how many bats we captured during the night
-```{r, echo=FALSE, message=FALSE}
-ggplot(df, aes(day)) +
-  geom_histogram() +
-  labs(x = "Day of the year",
-       y = "Number of bats") +
-  facet_wrap(vars(Year)) +
-  mytheme
-```
-
-
-
-Since weight seems to grows during inventory, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body condition index (BCI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
-
-```{r}
-# Fit simple linear model
-mod <- lm(log(W) ~ log(day), data = df)
-
-# Get residuals
-df$BCI <- residuals(mod)
-
-# Drop unused variables
-rm(mod)
-```
-
-That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
-
-
-## Check different growth metrics for variation during inventory time
-
-Custom function to check dependency of selected growth metric on day across 4 years
-
-```{r}
+# Custom function to check dependency of selected growth metric on day across 4 years
 check_my_var <- function(data, dependent_var, independent_var) {
   
   formula <- formula(paste0(dependent_var, " ~ ", independent_var))
@@ -282,16 +101,217 @@ check_my_var <- function(data, dependent_var, independent_var) {
   p <- ggplot(data = data, aes_string(x = independent_var, y = dependent_var)) +
     geom_point() +
     geom_smooth(method = "lm") +
-    facet_wrap(vars(Year)) +
-    mytheme
+    facet_wrap(vars(Year))
   
   return(list(yearly_stat, p))
 }
+
+# Custom function that calculate Growing degree units (GDU, Sum of the mean daily temperature above 0 from the start of the year) for each day of the year.
+# Must be calculated for each year separately.
+# Data must contain one row per day and the variable with the positive daily mean temperature.
+# If mean temperature is negative, put zero in this variable.
+# Also the variable with the full date MUST be character AND named "date"
+gdu <- function(daily_data_for_one_year, 
+                var_with_PositiveMeanTemp) {
+  GDU <- list() # prepare empty list
+  
+  # looping through the daily data within the year 
+  for (i in 1:nrow(daily_data_for_one_year)) {
+    GDU[[i]] <- c(daily_data_for_one_year$date[i],
+                  sum(daily_data_for_one_year[1:i, var_with_PositiveMeanTemp])
+    )
+  }
+  # reshape obtained list
+  GDU <- as.data.frame(GDU)
+  GDU <- as.data.frame(t(GDU))
+  colnames(GDU) <- c("date", "GDU")
+  # retrieve the result
+  return(GDU)
+}
+
+
+# Read data and prepare it for further analyses
+df <- read.csv("Homolsha_all_years.csv") # read data from *.csv file
+
+# Set variables classes
+df$date <- as.Date(df$Data, "%d.%m.%Y") # convert date to R Data format
+df$Place <- as.factor(df$Place)
+df$Species <- as.factor(df$Species)
+df$sex <- as.factor(df$sex)
+df$age <- as.factor(df$age)
+
+df$Year <- year(df$date) #виокремлення року
+df$Year <-as.factor (df$Year)
+#створення нової колонки з даними про день від початку року 
+df$day <- yday(df$date)
+
+
+df$Ra <- sub(",", ".", df$Ra) #заміна ком на крапки в промірах передпліччя
+df$W <- sub(",", ".", df$W)
+
+df$Ra <-as.numeric (df$Ra) #присвоєння промірам нумеричного типу даних
+df$W <-as.numeric (df$W)
+
+# Delete unused variables
+df$Data <- NULL
+df$reproductive.status <- NULL
+
+# Drop rows with NAs in W and Ra
+df <- df[!is.na(df$W) & !is.na(df$Ra),]
+
+# Loaded packages with their versions
+sessionInfo() # to check your locale
 ```
 
+Take a look at the data
+```{r, echo=FALSE}
+summary(df)
+```
+
+Check age structure among species
+```{r, echo=FALSE}
+table (df$Species,df$age)
+```
+
+Select only subadult Noctule bats
+
+```{r}
+# Subset only some species (e.g., N.noc. , M.daubentonii)
+df <- subset(df,
+              Species %in% c('Nyctalus noctula'
+                              #,'Myotis daubentonii'
+                             ) &
+                age == "sad"
+              )
+
+summary (df)
+```
+
+Since we have nights ("days") with very few bats captured, we decided to drop the nights with less then 10 bats.
+
+```{r}
+df <- df |> 
+  # count bats per day
+  count(date) |>
+  # choose days where more than 10 bats
+  filter(n > 10) |> 
+  # subset with days where more than 10 bats
+  inner_join(df)
+```
+
+
+## Exploration of the dynamics of growth metrics 
+How Ra related to W?
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+ggplot(data = df, aes(Ra, W
+                      , colour = Year
+                      )
+       ) +
+  geom_point(alpha = 0.5) + 
+  geom_smooth(method = "lm", aes(fill = Year)) + 
+  labs(x = "Forearm length, mm",
+       y = "Weight, g")
+```
+
+Bats with bigger forearm (Ra) have higher mass (W), and vice versa, regardless of year of capture.
+
+Is there any sex differences in growth metrics? Is that possible that male and female bats growth different?
+
+```{r, echo=FALSE}
+p1 <- ggplot(data = df, aes(sex, Ra)) +
+  geom_violin() + 
+  labs(title = "Forearm length",
+       y = "Forearm length, mm")
+
+p2 <- ggplot(data = df, aes(sex, W)) +
+  geom_violin() + 
+  labs(title = "Weight",
+       y = "Weight, g")
+
+
+gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
+```
+
+Ra might be slightly sex-dependent, Weight does not show such pattern.
+
+Does Ra or W seem to be different among years?
+
+```{r, echo=FALSE}
+p1 <- ggplot(data = df, aes(Year, Ra)) +
+  geom_violin() + 
+  labs(title = "Forearm length",
+       y = "Ra, mm")
+
+p2 <- ggplot(data = df, aes(Year, W)) +
+  geom_violin() + 
+  labs(title = "Weight",
+       y = "W, g")
+
+gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
+```
+
+In our data set, Ra seems to be constant across the years of survey. Contrary, W tends to vary among years. Therefore, to test our hypothesis about spring weather effect on bat growth, we must apply weight-related metric of growth, not Ra-related.
+
+
+Does Ra or W changes over the inventory time?
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+# t ~ Ra
+p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(fill = Year)) + 
+  labs(title = "Ra ~ DOY",
+       y = "Forearm length, mm")
+
+# t ~ W
+p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(fill = Year)) +
+  labs(title = "W ~ DOY",
+       y = "Weight, g")
+
+
+gridExtra::grid.arrange(p_Ra_day_4years, p_W_day_4years, nrow=1, ncol=2)
+
+rm(p_Ra_day_4years, p_W_day_4years)
+```
+
+As we can see, Ra remains constant over inventory period, and probably doesn't differ among years (need statistical testing, but gives a hint from the plot). Weight, instead, (i) differs among years, and (ii) grows over the inventory period.
+
+In other words, bats captured later might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated series of synthetic growth metrics, and test their variation over the inventory period and between the years.
+
+Check how many bats we captured during the night
+```{r, echo=FALSE, message=FALSE}
+ggplot(df, aes(day)) +
+  geom_histogram() +
+  labs(x = "Day of the year",
+       y = "Number of bats") +
+  facet_wrap(vars(Year))
+```
+
+
+
+Since weight seems to grows during inventory, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body condition index (BCI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
+
+```{r}
+# Fit simple linear model
+mod <- lm(log(W) ~ log(day), data = df)
+
+# Get residuals
+df$BCI <- residuals(mod)
+
+# Drop unused variables
+rm(mod)
+```
+
+That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
+
+
+## Check different growth metrics for variation during inventory time
 ### Ra
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 check_my_var(df, "Ra", "day")
 ```
 
@@ -299,7 +319,7 @@ Ra is weakly related to the time of capture.
 
 ### W
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 check_my_var(df, "W", "day")
 ```
 
@@ -313,163 +333,218 @@ check_my_var(df, "BCI", "day")
 BCI is weakly related to the time of caption, as it was expected from the method of calculation.
 
 BCI showed visual differences among years, suggesting bats grow differently depending on year-specific effects.
+
 ```{r, echo=FALSE}
 ggplot(data = df, aes(Year, BCI)) +
   geom_violin() + 
-  labs(y = "Body Condition Index") +
-  mytheme
+  labs(y = "Body Condition Index")
 ```
 
 For Homilsha Forest inventory data, 2014 seems to have insufficient number of nights when 10 or more Noctule bat individuals were captured - possibly we should remove it from further analyses.
+
 ```{r, message=FALSE}
 ggplot(data = df, aes(day, BCI, colour = Year)) +
   geom_point(alpha = 0.5) + 
   geom_smooth(method = "lm", aes(fill = Year)) + 
   labs(x = "Day of the year",
-       y = "Body Condition Index") +
-  # facet_wrap(vars(sex)) +
-  mytheme
+       y = "Body Condition Index")
+  # facet_wrap(vars(sex))
 ```
 
 Therefore, we choose to test two alternative response variables - forearm length (Ra) and Body Condition Index (BCI), as a possible growth metric in our research.
 
+# Is there any difference in bat growth among years?
+First, drop 2014 as the year with insufficient data coverage, then test the homogeneity of variance (ANOVA basic assumption).
 
-# Test null models of random effect of years on bat growth
+```{r, message=FALSE, echo=FALSE}
+# Drop 2014 due to the lack of successful nights
+df <- df[df$Year != "2014", ]
 
-Instructions from <https://tobiasroth.github.io/BDAEcology/lmer.html> Additional beginner's guide <https://rstudio-pubs-static.s3.amazonaws.com/63556_e35cc7e2dfb54a5bb551f3fa4b3ec4ae.html>
-
-```{r, message=FALSE}
-library (lme4)
-# `lme4` requires `Matrix` >= 1.6-4. See for more details https://community.rstudio.com/t/error-in-initializeptr-function-cholmod-factor-ldeta-not-provided-by-package-matrix/178694
-```
-
-Null-model (random effect only)
-
-```{r}
-mod0Ra <- lmer (Ra ~ 1 + (1|Year),
-             data=df
-             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
-             )
-
-summary (mod0Ra)
-```
-
-```{r}
-summ(mod0Ra)
-```
-
-To test the variance of intersepts
-
-```{r}
-library(lmerTest)
-ranova(mod0Ra)
-```
+# # Check for normality
+# # if p value > 0.05 - accept Null Hypothesis, otherwise reject it
+# 
+# # Assess normality for each year separately
+# shapiro.test(df$Ra[df$Year == "2008"])
+# shapiro.test(df$Ra[df$Year == "2011"])
+# shapiro.test(df$Ra[df$Year == "2019"])
+# 
+# 
+# shapiro.test(df$BCI[df$Year == "2008"])
+# shapiro.test(df$BCI[df$Year == "2011"])
+# shapiro.test(df$BCI[df$Year == "2019"])
 
 
+# Bartlett test of homogeneity of variances
+# If p > 0.05, accept Null Hypothesis (variance are homogeneous)
 
-```{r}
-mod0BCI <- lmer (BCI ~ 1 + (1|Year),
-             data=df
-             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
-             )
+# Ra
+barlett_Ra <- bartlett.test(Ra ~ Year, df)
 
-summary (mod0BCI)
+# BCI
+barlett_BCI <- bartlett.test(BCI ~ Year, df)
 
-summ(mod0BCI)
-```
+p1 <- ggplot(data = df, aes(x = Ra)) +
+  geom_histogram() +
+  labs(title = paste0("Bartlett test of homogeneity of variances: p-value = ",
+                      round(barlett_Ra$p.value, digits = 3)),
+       x = "Foreadrm length, mm", 
+       y = "Frequency") +
+  facet_wrap(vars(Year))
 
-To test the variance of intersepts
+p2 <- ggplot(data = df, aes(x = BCI)) +
+  geom_histogram() +
+  labs(title = paste0("Bartlett test of homogeneity of variances: p-value = ",
+                      round(barlett_BCI$p.value, digits = 3)),
+       x = "Body Condition Index", 
+       y = "Frequency") +
+  facet_wrap(vars(Year))
 
-```{r}
-library(lmerTest)
-ranova(mod0Ra)
+gridExtra::grid.arrange(p1, p2, nrow=2, ncol=1)
 ```
 
 
+# One-way ANOVA
+## Forearm length
+```{r, echo=FALSE}
+# Compute the analysis of variance
+res.aov.Ra <- aov(Ra ~ Year, data = df)
+summary(res.aov.Ra)
+# H0: All group means are equal
+# HA: Not all group means are equal
 
 
-Model with one fixed effect - time (as day from the beginning of year)
+# The F value column is the test statistic from the F test. This is the mean square of each independent variable divided by the mean square of the residuals. The larger the F value, the more likely it is that the variation caused by the independent variable is real and not due to chance.
 
-```{r}
-mod1Ra <- lmer (Ra ~ day + (1 |Year),
-             data=df
-             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
-             )
+# The Pr(>F) column is the p value of the F statistic. This shows how likely it is that the F value calculated from the test would have occurred if the null hypothesis of no difference among group means were true.
 
-summary (mod1Ra)
+ggplot(df, aes(x = Year, y = Ra, colour = Year)) +
+  geom_boxplot() +
+  scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07")) +
+  annotate("text",        # type
+           x = 1, y = 49, # position
+           hjust = 0,     # alignment left
+           label = paste(paste0("F = ", round(summary(res.aov.Ra)[[1]][["F value"]][1], digits = 3)), 
+                         paste0("p = ", round(summary(res.aov.Ra)[[1]][["Pr(>F)"]][1], digits = 3)),
+                         sep = "\n"),
+           family = "serif", fontface = "italic", size = 5) +
+  labs(title = "Differences in forearm length for Noctule bats,\nOne-way Analysis of Variance",
+       x = "", y = "Forearm length, mm",
+       colour = "") +
+  # scale_colour_discrete(labels = c("I. setosa", "I. versicolor", "I. virginica")) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        # match legend key to panel.background
+        legend.key       = element_blank(),
+        legend.text = element_text(face = "italic", size = 12),
+        legend.position = "bottom")
+
+
+# Tukey Honest Significant Differences
+TukeyHSD(res.aov.Ra, conf.level = .95)
+# if adjusted p-value lesser than 0.05 - pair differs significantly
+
+
+
+# Plotting ANOVA assumptions
+par(mfrow=c(1,2))
+
+# Check ANOVA assumptions
+# 1. Homogeneity of variances (The residuals versus fits plot)
+plot(res.aov.Ra, 1)
+# 2. Normality plot of residuals
+plot(res.aov.Ra, 2)
+
+par(mfrow=c(1,1))
+
+# Alternatively - Shapiro-Wilk test for the residuals
+# Extract the residuals
+aov_residuals <- residuals(object = res.aov.Ra)
+# Run Shapiro-Wilk test
+shapiro.test(x = aov_residuals)
 ```
 
-```{r}
-library(jtools)
-summ(mod1Ra)
+We found no statistically-significant difference in average forearm length by all three years (F = 0.287, p = 0.75).
+
+## Body Condition Index
+
+```{r, echo=FALSE}
+# Compute the analysis of variance
+res.aov.BCI <- aov(BCI ~ Year, data = df)
+summary(res.aov.BCI)
+# H0: All group means are equal
+# HA: Not all group means are equal
+
+
+# The F value column is the test statistic from the F test. This is the mean square of each independent variable divided by the mean square of the residuals. The larger the F value, the more likely it is that the variation caused by the independent variable is real and not due to chance.
+
+# The Pr(>F) column is the p value of the F statistic. This shows how likely it is that the F value calculated from the test would have occurred if the null hypothesis of no difference among group means were true.
+
+ggplot(df, aes(x = Year, y = BCI, colour = Year)) +
+  geom_boxplot() +
+  scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07")) +
+  # annotate("text",  x = 1, y = -0.4, 
+  #          label = paste0("p = ", round(summary(res.aov.BCI)[[1]][["Pr(>F)"]][1], digits = 4)),
+  #          family = "serif", fontface = "italic", size = 5) +
+  annotate("text",        # type
+         x = 1, y = -0.4, # position
+         hjust = 0,     # alignment left
+         label = paste(paste0("F = ", round(summary(res.aov.BCI)[[1]][["F value"]][1], digits = 3)), 
+                       paste0("p = ", round(summary(res.aov.BCI)[[1]][["Pr(>F)"]][1], digits = 3)),
+                       sep = "\n"),
+         family = "serif", fontface = "italic", size = 5) +
+  labs(title = "Differences in forearm length for Noctule bats,\nOne-way Analysis of Variance",
+       x = "", y = "Forearm length, mm",
+       colour = "") +
+  # scale_colour_discrete(labels = c("I. setosa", "I. versicolor", "I. virginica")) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        # match legend key to panel.background
+        legend.key       = element_blank(),
+        legend.text = element_text(face = "italic", size = 12),
+        legend.position = "bottom")
+
+
+# Tukey Honest Significant Differences
+TukeyHSD(res.aov.BCI, conf.level = .95)
+# if adjusted p-value lesser than 0.05 - pair differs significantly
+
+
+# Plotting ANOVA assumptions
+par(mfrow=c(1,2))
+
+# Check ANOVA assumptions
+# 1. Homogeneity of variances (The residuals versus fits plot)
+plot(res.aov.BCI, 1)
+# 2. Normality plot of residuals
+plot(res.aov.BCI, 2)
+
+par(mfrow=c(1,1))
+
+
+
+# Alternatively - Shapiro-Wilk test for the residuals
+# ExtBCIct the residuals
+aov_residuals <- residuals(object = res.aov.BCI)
+# Run Shapiro-Wilk test
+shapiro.test(x = aov_residuals)
 ```
 
-Tp test the variance of intersepts
+For Body Condition Index, we found a statistically-significant difference among years (F = 46.776, p < 0.001).
 
-```{r}
-library(lmerTest)
-ranova(mod1Ra)
+A Tukey post-hoc test revealed that average body condition significantly index decreased from 2008 to 2019.
+
+Normality was not reached for the residuals (Shapiro-Wilk test), but since we have large sample size, we can neglect this fact and rely on central limit theorem and the equality of variances (Bartlett test results).
+
+To double-check, we can fit a non-parametric Kruskal-Wallis test (use median instead of mean as mean tendency, slightly less powerful but robust to non normal distributions):
+
+```{r, echo=FALSE}
+kruskal.test(BCI ~ Year, data = df)
 ```
 
-```{r}
-plot (mod1Ra)
-```
+Kruskal-Wallis test confirmed the results of ANOVA, suggesting average Body Condition Index differs across years of sampling.
 
 
-
-
-
-## t \~ W
-
-Make a model with Weight gata of subadult bast Null-model (random effect only)
-
-```{r}
-mod0_W <- lmer (W ~ 1 + (1|Year),
-             data=df
-             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
-             )
-
-
-summ(mod0_W)
-```
-
-Model weight with one fixed effect - time (as day from the beginning of year)
-
-```{r}
-mod1W <- lmer (W ~ day + (1 |Year),
-             data=df
-             # REML=F # https://tobiasroth.github.io/BDAEcology/lmer.html#restricted-maximum-likelihood-estimation-reml
-             )
-
-summ(mod1W)
-```
-
-```{r}
-library(lmerTest)
-ranova(mod1W)
-```
-
-```{r}
-plot (mod1W)
-```
-
-```{r}
-ggplot(data = df, aes(x = day, y = W, colour = Year)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_wrap(vars(Species),
-             scales = "free") 
-```
-
-```{r}
-mod1 <-  lm(BCI ~ Year, data = df)
-
-summary (mod1)
-```
-
-
-
-## Generate weather data
+# Generate weather data
 
 ```{r}
 # Take a look at the timespan
