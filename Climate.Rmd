@@ -27,7 +27,7 @@ The analysis focused on two distinct periods deemed crucial for bat growth: the 
 
 Research Question and Hypotheses: Whether weather conditions during the periods of pregnancy and lactation influence the growth of young bats? It was hypothesized that years characterized by warmer and drier conditions during spring would correspond to larger sizes in subadult bats.
 
-A total of 736 subadult bats from two species, Nyctalus noctula and Myotis daubentonii were taken for the analysis.
+A total of 533 subadult bats of Nyctalus noctula were taken for the analysis.
 
 ## Data preparation
 Setting up a session
@@ -277,6 +277,25 @@ gridExtra::grid.arrange(p_Ra_day_4years, p_W_day_4years, nrow=1, ncol=2)
 rm(p_Ra_day_4years, p_W_day_4years)
 ```
 
+## Check different growth metrics for variation during inventory time
+### Ra
+fit simple lm 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+check_my_var(df, "Ra", "day")
+```
+
+Ra is weakly related to the time of capture. 
+
+### W
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+check_my_var(df, "W", "day")
+```
+
+W strongly related to the time of capture.
+
+
 As we can see, Ra remains constant over inventory period, and probably doesn't differ among years (need statistical testing, but gives a hint from the plot). Weight, instead, (i) differs among years, and (ii) grows over the inventory period.
 
 In other words, bats captured later might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated series of synthetic growth metrics, and test their variation over the inventory period and between the years.
@@ -308,22 +327,7 @@ rm(mod)
 That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
 
-## Check different growth metrics for variation during inventory time
-### Ra
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
-check_my_var(df, "Ra", "day")
-```
-
-Ra is weakly related to the time of capture. 
-
-### W
-
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
-check_my_var(df, "W", "day")
-```
-
-W strongly related to the time of capture.
 
 ### BCI
 ```{r, warning=FALSE, message=FALSE}
@@ -493,7 +497,7 @@ ggplot(df, aes(x = Year, y = BCI, colour = Year)) +
                        sep = "\n"),
          family = "serif", fontface = "italic", size = 5) +
   labs(title = "Differences in forearm length for Noctule bats,\nOne-way Analysis of Variance",
-       x = "", y = "Forearm length, mm",
+       x = "", y = "BCI",
        colour = "") +
   # scale_colour_discrete(labels = c("I. setosa", "I. versicolor", "I. virginica")) +
   theme(axis.text.x = element_blank(),
