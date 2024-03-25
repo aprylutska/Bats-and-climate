@@ -57,77 +57,14 @@ theme_set(mytheme)
 # Sys.setlocale("LC_TIME", "en_US.UTF-8") # for Linux
 # Sys.setlocale("LC_TIME", "English") # for Windows
 
-
-# Custom function to check dependency of selected growth metric on day across 4 years
-check_my_var <- function(data, dependent_var, independent_var) {
-  
-  formula <- formula(paste0(dependent_var, " ~ ", independent_var))
-
-  years <- list("2008", "2011", "2014", "2019")
-  
-  yearly_stat <- list()
-  
-  for (i in 1:length(years)) {
-    
-    # Fit simple linear model
-    mod <- lm(formula = formula, data = data[data$Year == years[i],])
-    
-    # Get response coefficient
-    coef <- mod$coefficients[2]
-    
-    # Get p-value from model summary
-    p_val <- summary(mod)$coefficients[,"Pr(>|t|)"][2]
-    
-    yearly_stat[[i]] <- c(coef, p_val)
-    
-  }
-  
-  yearly_stat <- as.data.frame(t(as.data.frame(yearly_stat)))
-  rownames(yearly_stat) <- years
-  colnames(yearly_stat) <- c("Coefficient", "p_value")
-  
-  # yearly_stat$sign_level <- ifelse(yearly_stat$p-value > 0.05, 
-  #                                  " ", 
-  #                                  ifelse(yearly_stat$p-value <= 0.05 & yearly_stat$p-value > 0.01,
-  #                                         "*",
-  #                                         "***")
-  #                                  )
-  for (k in 1:nrow(yearly_stat)) {
-    
-    yearly_stat$sign_level[k] <- if(yearly_stat$p_value[k] > 0.05) {" "} else {"*"}
-    
-  }
-  
-  p <- ggplot(data = data, aes_string(x = independent_var, y = dependent_var)) +
-    geom_point() +
-    geom_smooth(method = "lm") +
-    facet_wrap(vars(Year))
-  
-  return(list(yearly_stat, p))
-}
+# Custom function to check dependency of selected growth metric on day across years
+source("./functions/check_my_var.R")
 
 # Custom function that calculate Growing degree units (GDU, Sum of the mean daily temperature above 0 from the start of the year) for each day of the year.
-# Must be calculated for each year separately.
-# Data must contain one row per day and the variable with the positive daily mean temperature.
-# If mean temperature is negative, put zero in this variable.
-# Also the variable with the full date MUST be character AND named "date"
-gdu <- function(daily_data_for_one_year, 
-                var_with_PositiveMeanTemp) {
-  GDU <- list() # prepare empty list
-  
-  # looping through the daily data within the year 
-  for (i in 1:nrow(daily_data_for_one_year)) {
-    GDU[[i]] <- c(daily_data_for_one_year$date[i],
-                  sum(daily_data_for_one_year[1:i, var_with_PositiveMeanTemp])
-    )
-  }
-  # reshape obtained list
-  GDU <- as.data.frame(GDU)
-  GDU <- as.data.frame(t(GDU))
-  colnames(GDU) <- c("date", "GDU")
-  # retrieve the result
-  return(GDU)
-}
+source("./functions/gdu.R")
+
+# Custom function to find spring onset.
+source("./functions/spring_onset_day.R")
 
 
 # Read data and prepare it for further analyses
@@ -141,7 +78,7 @@ df$sex <- as.factor(df$sex)
 df$age <- as.factor(df$age)
 
 df$Year <- year(df$date) #виокремлення року
-df$Year <-as.factor (df$Year)
+df$Year <-as.factor(df$Year)
 #створення нової колонки з даними про день від початку року 
 df$day <- yday(df$date)
 
@@ -196,7 +133,7 @@ df <- df |>
   # choose days where more than 10 bats
   filter(n > 10) |> 
   # subset with days where more than 10 bats
-  inner_join(df)
+  inner_join(df, by = join_by(date))
 ```
 
 
@@ -262,6 +199,7 @@ p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
   geom_point() +
   geom_smooth(method = "lm", aes(fill = Year)) + 
   labs(title = "Ra ~ DOY",
+       x = "Day of the year",
        y = "Forearm length, mm")
 
 # t ~ W
@@ -269,6 +207,7 @@ p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
   geom_point() +
   geom_smooth(method = "lm", aes(fill = Year)) +
   labs(title = "W ~ DOY",
+       x = "Day of the year",
        y = "Weight, g")
 
 
@@ -309,9 +248,7 @@ ggplot(df, aes(day)) +
   facet_wrap(vars(Year))
 ```
 
-
-
-Since weight seems to grows during inventory, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body condition index (BCI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
+Since weight seems to be growing during inventory timespan, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body condition index (BCI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
 
 ```{r}
 # Fit simple linear model
@@ -596,37 +533,14 @@ daily <- daily %>%
   mutate(date = as.Date(date),
          month = months(date),
          year = format(date, format = "%Y")) %>%
+  mutate(year = as.numeric(year)) %>% 
   # Filter only years of inventories
   filter(year %in% c(2008, 2011, 2014, 2019))
 ```
 
 ### Calculate GDU
 
-Growing degree units (Sum of the mean daily temperature above 0 from the start of the year). Create custom function that calculate GDUs for each day of the year.
-
-```{r}
-# Must be calculated for each year separately.
-# Data must contain one row per day and the variable with the positive daily mean temperature.
-# If mean temperature is negative, put zero in this variable.
-# Also the variable with the full date MUST be character AND named "date"
-gdu <- function(daily_data_for_one_year, 
-                var_with_PositiveMeanTemp) {
-  GDU <- list() # prepare empty list
-  
-  # looping through the daily data within the year 
-  for (i in 1:nrow(daily_data_for_one_year)) {
-    GDU[[i]] <- c(daily_data_for_one_year$date[i],
-                  sum(daily_data_for_one_year[1:i, var_with_PositiveMeanTemp])
-    )
-  }
-  # reshape obtained list
-  GDU <- as.data.frame(GDU)
-  GDU <- as.data.frame(t(GDU))
-  colnames(GDU) <- c("date", "GDU")
-  # retrieve the result
-  return(GDU)
-}
-```
+Growing degree units (Sum of the mean daily temperature above 0 from the start of the year). We have created a custom function that calculate GDUs for each day of the year.
 
 Calculate GDU and add it to the main weather data frame.
 
@@ -672,6 +586,55 @@ daily <- daily %>%
 # Drop temporary variables not longer required
 rm(df_temp, df_gdu, GDU, gdu_by_years, i, k)
 ```
+
+
+## Calculate date of spring onset
+We define spring onset as the final day of the first two-week period when mean daily temperature is constantly above 0 Celsius degree.
+
+```{r}
+# List all required years
+list_of_years <- c(2008, 2011, 2014, 2019)
+
+# Create an empty list
+SprOn_by_years <- list()
+
+for (k in 1:length(list_of_years)) {
+  
+  # Calculate spring onset day for each year/place
+  df_temp <- daily %>% 
+    # loop doesn't seem to work with `date` format, convert to character
+    # mutate(date = as.character(date)) %>%
+    filter(year == list_of_years[[k]]) %>%
+    # filter(year == list_of_years[[1]]) %>% 
+    select(place, date, MeanTemp) %>%
+    split(.$place)
+  
+  
+  # Create an empty list
+  df_SprOn <- list()
+  
+  # Loop through the list elements (data frames with all days for the particular year,
+  # split by place ID)
+  
+  for (i in 1:length(df_temp)) {
+  df_SprOn[[i]] <- c(place = df_temp[[i]]$place[1],
+                     spring_onset = spring_onset_day(df_temp[[i]], "MeanTemp"))
+  
+  }
+
+  # Transform list of data frames into a single data frame
+  SprOn_by_years[[k]] <- bind_rows(df_SprOn) %>% 
+    mutate(year = list_of_years[k])
+  
+}
+
+# Transform list of data frames into a single data frame
+SprOn <- bind_rows(SprOn_by_years)
+
+# Drop temporary variables not longer required
+rm(df_temp, df_SprOn, SprOn_by_years, i, k)
+```
+
 
 ## Explore weather data
 
@@ -766,6 +729,7 @@ daily_spring_summer |>
 ggsave("./figures/Tmin_2008-2019_density_Apr.png", width = 16, height = 12, units = "cm", dpi = 150)
 ```
 
+
 ## Generate exploratory variables for bat growth \~ weather models
 
 ```{r}
@@ -832,14 +796,19 @@ daily_spring_summer %>%
 
 # Merge weather covariates
 Prcp_spring %>% 
-  left_join(Prcp_summer) %>% 
-  left_join(Tmin_spring) %>% 
-  left_join(Tmin_summer) %>% 
-  left_join(Less10_var) %>% 
-  left_join(GDU_spring) %>% 
-  left_join(GDU_summer) %>% 
+  left_join(Prcp_summer, by = join_by(place, year)) %>% 
+  left_join(Tmin_spring, by = join_by(place, year)) %>% 
+  left_join(Tmin_summer, by = join_by(place, year)) %>% 
+  left_join(Less10_var, by = join_by(place, year)) %>% 
+  left_join(GDU_spring, by = join_by(place, year)) %>% 
+  left_join(GDU_summer, by = join_by(place, year)) %>% 
+  left_join(SprOn, by = join_by(place, year)) %>% 
+  mutate(across(c(GDU_spr,
+                  GDU_summ,
+                  spring_onset), as.numeric)) %>% 
   rename(Place = place,
-         Year = year) -> covariates
+         Year = year) %>% 
+  mutate(Year = as.factor(Year)) -> covariates
 
 # Drop unused variables
 rm(Prcp_spring, Prcp_var, Prcp_summer, Tmin_spring, Tmin_summer, Tmin_var, 
@@ -847,13 +816,30 @@ rm(Prcp_spring, Prcp_var, Prcp_summer, Tmin_spring, Tmin_summer, Tmin_var,
 
 ```
 
+
 Merge weather data with bat survey data and save it for further sessions
 
 ```{r}
 # Merge data
 df_clim <- df %>% 
-  left_join(covariates)
+  left_join(covariates, by = join_by(Place, Year))
 
 # Export climate data for further sessions
 save(df_clim, file = "bats_wClimate_2008-2019.Rdata")
 ```
+
+# Explore relationship between weather conditions and bat growth
+## Check highly correlated exploratory variables
+
+```{r, echo=FALSE, eval=FALSE}
+# Load previously generated data if you have started a new session
+load(file = "bats_wClimate_2008-2019.Rdata")
+```
+
+Pearson correlation among variables
+
+Variance Inflation Factor
+
+Final subset of variables
+
+ANOVA
