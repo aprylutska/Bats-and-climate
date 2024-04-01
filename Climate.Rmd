@@ -127,13 +127,14 @@ summary (df)
 Since we have nights ("days") with very few bats captured, we decided to drop the nights with less then 10 bats.
 
 ```{r}
-df <- df |> 
+df <- df %>%  
   # count bats per day
-  count(date) |>
+  count(date) %>% 
   # choose days where more than 10 bats
-  filter(n > 10) |> 
+  filter(n > 10) %>%  
   # subset with days where more than 10 bats
-  inner_join(df, by = join_by(date))
+  inner_join(df, by = join_by(date)) %>% 
+  select(-n)
 ```
 
 
@@ -826,6 +827,10 @@ df_clim <- df %>%
 
 # Export climate data for further sessions
 save(df_clim, file = "bats_wClimate_2008-2019.Rdata")
+
+# Remove temporary variables
+rm(barlett_BCI, barlett_Ra, covariates, daily, df, p1, p2, res.aov.BCI, 
+   res.aov.Ra, SprOn, aov_residuals, list_of_years, check_my_var, gdu, spring_onset_day)
 ```
 
 # Explore relationship between weather conditions and bat growth
@@ -899,6 +904,12 @@ v2
 ## All predictors
 
 ```{r}
+# Check model assumptions visually
+library(performance)
+```
+
+
+```{r}
 # Set the formula
 formula_Ra_all_covs <- "Ra ~ Prcp_spr + Prcp_summ + Tmin_spr + Tmin_summ + Less10_var + GDU_spr + GDU_summ + spring_onset"
 
@@ -910,6 +921,12 @@ formula_BCI_all_covs <- "BCI ~ Prcp_spr + Prcp_summ + Tmin_spr + Tmin_summ + Les
 mod_Ra_all <- lm(formula = as.formula(formula_Ra_all_covs), data = df_clim)
 summary(mod_Ra_all)
 
+check_model(mod_Ra_all, panel = FALSE) %>%  plot()
+```
+
+
+
+```{r}
 mod_BCI_all <- lm(formula = as.formula(formula_BCI_all_covs), data = df_clim)
 summary(mod_BCI_all)
 ```
