@@ -34,7 +34,7 @@ Setting up a session
 
 ```{r, echo=FALSE}
 rm(list = ls()) # reset R's brain
-library(lubridate)  
+library(lubridate)
 library(ggplot2)
 library(tidyverse) # for data manipulations
 library(easyclimate) # for daily climate data extraction
@@ -592,7 +592,7 @@ rm(df_temp, df_gdu, GDU, gdu_by_years, i, k)
 ## Calculate date of spring onset
 We define spring onset as the final day of the first two-week period when mean daily temperature is constantly above 0 Celsius degree.
 
-```{r}
+```{r, message=FALSE}
 # List all required years
 list_of_years <- c(2008, 2011, 2014, 2019)
 
@@ -844,17 +844,24 @@ load(file = "bats_wClimate_2008-2019.Rdata")
 
 Pearson correlation among variables
 
+```{r, warning=FALSE}
+library(PerformanceAnalytics)
+
+chart.Correlation(df_clim[, 13:ncol(df_clim)], histogram = TRUE, method = "pearson")
+```
+
+
 ```{r}
 # Corrplot
 library(corrplot)
-M = cor(df_clim[, 13:ncol(df_clim)])
+M = cor(df_clim[, 12:ncol(df_clim)])
 
 # corrplot(M, method = 'square', order = 'FPC', type = 'lower', diag = FALSE)
 
 # Custom function to calculate significance level (p-values) for correlation matrix
 source("./functions/sign_level.R")
 # matrix of the p-value of the correlation
-p.mat <- sign_level(df_clim[, 13:ncol(df_clim)])
+p.mat <- sign_level(df_clim[, 12:ncol(df_clim)])
 
 
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
@@ -869,17 +876,48 @@ corrplot(M, method = "color", col = col(200),
          )
 ```
 
+As we can see, most of the variables are highly correlated.
 
-```{r, warning=FALSE}
-library(PerformanceAnalytics)
+Let's take a look at spring and summer predictors separately
 
-chart.Correlation(df_clim[, 13:ncol(df_clim)], histogram = TRUE, method = "pearson")
+```{r}
+# Spring
+M_spr = cor(df_clim[, c("Prcp_spr", "Tmin_spr", "GDU_spr", "Less10_var")])
+
+# matrix of the p-value of the correlation
+p.mat_spr <- sign_level(df_clim[, c("Prcp_spr", "Tmin_spr", "GDU_spr", "Less10_var")])
+
+corrplot(M_spr, method = "color", col = col(200),  
+         type = "upper", order = "hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt = 45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat_spr, sig.level = 0.05, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+         )
+
+# Summer
+M_summ = cor(df_clim[, c("Prcp_summ", "Tmin_summ", "GDU_summ")])
+
+# matrix of the p-value of the correlation
+p.mat_summ <- sign_level(df_clim[, c("Prcp_summ", "Tmin_summ", "GDU_summ")])
+
+corrplot(M_summ, method = "color", col = col(200),  
+         type = "upper", order = "hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt = 45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat_summ, sig.level = 0.05, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+         )
 ```
 
-
-
+All spring covariates are highly correlated. Summer covariates, though, weakly correlated among each other.
 
 Variance Inflation Factor
+
 ```{r, message=FALSE}
 library(usdm)
 
@@ -896,6 +934,30 @@ v2
 ```
 
 
+Do stepwise selection of covariates, excluding the most correlated and check multicollinearity iteratively.
+
+```{r}
+# Covariates to check
+# covs <- c("Prcp_spr", "Tmin_spr", "GDU_spr", "Less10_var", "Prcp_summ", "Tmin_summ", "GDU_summ", "spring_onset")
+covs <- c("Prcp_spr", "Tmin_spr", "GDU_spr", "Less10_var", "Prcp_summ", "Tmin_summ", "GDU_summ", "spring_onset")
+
+
+# Spring
+M_spr = cor(df_clim[, c("Prcp_spr", "Tmin_spr", "GDU_spr", "Less10_var")])
+
+# matrix of the p-value of the correlation
+p.mat_spr <- sign_level(df_clim[, c("Prcp_spr", "Tmin_spr", "GDU_spr", "Less10_var")])
+
+corrplot(M_spr, method = "color", col = col(200),  
+         type = "upper", order = "hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt = 45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat_spr, sig.level = 0.05, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+         )
+```
 
 
 
