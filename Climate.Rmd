@@ -32,7 +32,7 @@ A total of 533 subadult bats of Nyctalus noctula were taken for the analysis.
 ## Data preparation
 Setting up a session
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=FALSE}
 rm(list = ls()) # reset R's brain
 library(lubridate)
 library(ggplot2)
@@ -95,7 +95,9 @@ df$reproductive.status <- NULL
 
 # Drop rows with NAs in W and Ra
 df <- df[!is.na(df$W) & !is.na(df$Ra),]
+```
 
+```{r}
 # Loaded packages with their versions
 sessionInfo() # to check your locale
 ```
@@ -147,7 +149,8 @@ ggplot(data = df, aes(Ra, W
                       )
        ) +
   geom_point(alpha = 0.5) + 
-  geom_smooth(method = "lm", aes(fill = Year)) + 
+  geom_smooth(method = "lm", aes(fill = Year)) +
+  # geom_smooth(aes(fill = Year)) + 
   labs(x = "Forearm length, mm",
        y = "Weight, g")
 ```
