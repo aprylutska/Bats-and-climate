@@ -131,6 +131,8 @@ p2 <- ggplot(data = df, aes(Year, W)) +
        y = "W, g")
 
 gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
+
+rm(p1, p2)
 ```
 
 In our data set, Ra seems to be constant across the years of survey. Contrary, W tends to vary among years. Therefore, to test our hypothesis about spring weather effect on bat growth, we must apply weight-related metric of growth, not Ra-related.
@@ -246,19 +248,10 @@ summary(df$date)
 
 ```{r eval=FALSE, echo=FALSE, message=FALSE}
 # # Create data frame with point coordinates
-coords <- data.frame(
-  place = c("R1", "R2", "Fed1", "Fed2", "Fed3", "F1", "F2", "F3", "F4"),
-  lon = c(36.33329, 36.32946, 36.32732, 36.32863, 36.33436, 36.32396, 36.32319, 36.31990, 36.31909),
-  lat = c(49.62554, 49.62092, 49.62298, 49.61411, 49.60477, 49.61782, 49.61169, 49.60948, 49.60782)
-)
-
-coords %>% 
-  mutate(Territory = "Homilsha") %>% 
-  relocate(Territory) %>% 
-  write.csv("coords.csv", row.names = FALSE)
-
-
-
+# coords <- read.csv("./data/coords.csv") %>%
+#   # Make a new variable with places' unique identifiers
+#   unite("place_id", Territory:place, remove = FALSE) %>%
+#   select(-c(Territory, place))
 # 
 # # Retrieve daily weather values using {easyclimate} package
 # # Prcp - Total precipitation in mm
@@ -269,7 +262,143 @@ coords %>%
 #   coords = coords,
 #   period = 2008:2019,
 #   climatic_var = c("Prcp","Tmin","Tmax"),
-#   output = "df")
+#   output = "df") %>%
+#   mutate(Tmean = (Tmax + Tmin) / 2) %>% 
+#   select(-Tmin, -Tmax) %>% 
+#   mutate(date = as.Date(date))
 # 
-# save(daily, file = "daily_weather_2008-2019.Rdata") # save weather data
+# save(daily, file = "./data/daily_weather_2008-2019.Rdata") # save weather data
 ```
+
+```{r echo=FALSE}
+load(file = "./data/daily_weather_2008-2019.Rdata")
+daily <- daily %>% 
+  mutate(date = as.Date(date))
+
+df <- df %>% 
+  rownames_to_column(var = "bat_id")
+```
+
+
+# Make retrospective climate
+
+```{r}
+
+test_df <- df[1:5,]
+
+for (i in 1:nrow(test_df)) {
+  
+}
+
+
+# What is the most early date in the dataset?
+min(df$day)
+
+lubridate::date()
+
+lubridate::yday(as.Date("2020-07-01"))
+```
+
+```{r}
+# Timespan in days
+time_lag <- 10
+# For time series analysis
+library(zoo)
+
+
+tdf <- df %>% 
+  count(place_id, date)
+
+
+
+# Extract data for one particular event (place_id + date)
+daily.one.event <- daily[# Select target place
+                        daily$place_id == tdf[1,1] & 
+                          # Define starting date
+                          daily$date <= tdf[1,2],
+                        # Select necessary columns
+                        c("date", "Prcp", "Tmean")
+                         ]
+
+# Cut date range to respective year
+daily.one.event <- daily.one.event %>% 
+  # Reorder by decreasing date
+  arrange(desc(date)) %>% 
+  # Only current year left
+  filter(year(date) == max(year(date)))
+
+# Calculate Rolling Mean Temperature
+# Create a zoo object with Date as the index
+zoo_data <- zoo(daily.one.event$Tmean, order.by = daily.one.event$date)
+
+# Calculate rolling mean with a window of 10 days
+rolling_mean <- rollapply(zoo_data, width = time_lag, FUN = mean, align = "right", fill = NA)
+
+# Convert the result back to a data frame
+rolling_mean_df <- data.frame(date = index(rolling_mean), Rolling_Mean_Temperature = coredata(rolling_mean))
+
+# Sort the resulting data frame by Date in descending order
+rolling_mean_df <- rolling_mean_df[order(rolling_mean_df$date, decreasing = TRUE), ]
+# each mean value corresponds to the last day of the 10-day window
+
+# Cut by fixed dates
+
+# July 1st
+# Define day of year for the July 1st for the year of event
+july_1st <- yday(paste0(year(daily.one.event$date[1]), "-07-01"))
+
+# Define day of year for the July 1st for the year of event
+mar_1st <- yday(paste0(year(daily.one.event$date[1]), "-03-01"))
+
+rolling_mean_df <- rolling_mean_df %>% 
+  mutate(doy = yday(date)) %>% 
+  filter(doy <= july_1st & doy >= mar_1st) %>% 
+  select(-doy)
+
+Rolling_Mean_Temperature <- rolling_mean_df[,2]
+
+
+# Calculate Rolling Summed Precipitation
+# Create a zoo object with Date as the index
+zoo_data <- zoo(daily.one.event$Prcp, order.by = daily.one.event$date)
+
+# Calculate rolling mean with a window of 10 days
+rolling_mean <- rollapply(zoo_data, width = time_lag, FUN = sum, align = "right", fill = NA)
+
+# Convert the result back to a data frame
+rolling_mean_df <- data.frame(date = index(rolling_mean), Rolling_Mean_Precipitation = coredata(rolling_mean))
+
+# Sort the resulting data frame by Date in descending order
+rolling_mean_df <- rolling_mean_df[order(rolling_mean_df$date, decreasing = TRUE), ]
+# each mean value corresponds to the last day of the 10-day window
+
+# Cut by fixed dates
+# July 1st
+# Define day of year for the July 1st for the year of event
+july_1st <- yday(paste0(year(daily.one.event$date[1]), "-07-01"))
+
+# Define day of year for the July 1st for the year of event
+mar_1st <- yday(paste0(year(daily.one.event$date[1]), "-03-01"))
+
+rolling_mean_df <- rolling_mean_df %>% 
+  mutate(doy = yday(date)) %>% 
+  filter(doy <= july_1st & doy >= mar_1st) %>% 
+  select(-doy)
+
+Rolling_Mean_Precipitation <- rolling_mean_df[,2]
+
+# Append vectors with rolling temperatures and precipitation
+combined_rolling_means <- c(Rolling_Mean_Temperature, Rolling_Mean_Precipitation)
+
+
+
+
+
+
+```
+
+
+
+
+
+
