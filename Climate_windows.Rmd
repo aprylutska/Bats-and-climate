@@ -283,35 +283,11 @@ df <- df %>%
 # Make retrospective climate
 
 ```{r}
-
-test_df <- df[1:5,]
-
-for (i in 1:nrow(test_df)) {
-  
-}
-
-
-# What is the most early date in the dataset?
-min(df$day)
-
-lubridate::date()
-
-lubridate::yday(as.Date("2020-07-01"))
-```
-
-```{r}
-# Timespan in days
-time_lag <- 10
-# For time series analysis
-library(zoo)
-
-
+# Make aggregated data frame, where one row = one capture event (place_id + date)
 tdf <- df %>% 
   count(place_id, date)
 
-
-
-# Extract data for one particular event (place_id + date)
+# Extract data for one event (place_id + date)
 daily.one.event <- daily[# Select target place
                         daily$place_id == tdf[1,1] & 
                           # Define starting date
@@ -320,82 +296,89 @@ daily.one.event <- daily[# Select target place
                         c("date", "Prcp", "Tmean")
                          ]
 
-# Cut date range to respective year
-daily.one.event <- daily.one.event %>% 
-  # Reorder by decreasing date
-  arrange(desc(date)) %>% 
-  # Only current year left
-  filter(year(date) == max(year(date)))
+# Custom function to calculate means of variable (xvar) in retrospective sliding window
+source("./functions/meanslidwin.R")
+source("./functions/sumslidwin.R")
 
-# Calculate Rolling Mean Temperature
-# Create a zoo object with Date as the index
-zoo_data <- zoo(daily.one.event$Tmean, order.by = daily.one.event$date)
+# Calculate sliding means of temperatures
+sliding_means <- list()
 
-# Calculate rolling mean with a window of 10 days
-rolling_mean <- rollapply(zoo_data, width = time_lag, FUN = mean, align = "right", fill = NA)
+for (i in 1:nrow(tdf)) {
+  
+  # Extract data for one particular event (place_id + date)
+  daily.one.event <- daily[# Select target place
+                          daily$place_id == tdf[i,1] & 
+                            # Define starting date
+                            daily$date <= tdf[i,2],
+                          # Select necessary columns
+                          c("date", "Prcp", "Tmean")
+                           ]
 
-# Convert the result back to a data frame
-rolling_mean_df <- data.frame(date = index(rolling_mean), Rolling_Mean_Temperature = coredata(rolling_mean))
+  sliding_means[[i]] <- meanslidwin(data = daily.one.event,
+                                  datevar = date,
+                                  xvar = Tmean,
+                                  time_lag = 10)
+  
+  sliding_means[[i]] <- as.data.frame.matrix(
+    t(as.data.frame(sliding_means[[i]]))
+    )
+}
 
-# Sort the resulting data frame by Date in descending order
-rolling_mean_df <- rolling_mean_df[order(rolling_mean_df$date, decreasing = TRUE), ]
-# each mean value corresponds to the last day of the 10-day window
+# Bind results for each combination of date and place into a single dataframe
+Tmeans_sliding <- bind_rows(sliding_means)
 
-# Cut by fixed dates
-
-# July 1st
-# Define day of year for the July 1st for the year of event
-july_1st <- yday(paste0(year(daily.one.event$date[1]), "-07-01"))
-
-# Define day of year for the July 1st for the year of event
-mar_1st <- yday(paste0(year(daily.one.event$date[1]), "-03-01"))
-
-rolling_mean_df <- rolling_mean_df %>% 
-  mutate(doy = yday(date)) %>% 
-  filter(doy <= july_1st & doy >= mar_1st) %>% 
-  select(-doy)
-
-Rolling_Mean_Temperature <- rolling_mean_df[,2]
+# add prefix 'Tmean_' to all column names
+colnames(Tmeans_sliding) <- paste('Tmean', c(1:ncol(Tmeans_sliding)), sep = '_')
 
 
-# Calculate Rolling Summed Precipitation
-# Create a zoo object with Date as the index
-zoo_data <- zoo(daily.one.event$Prcp, order.by = daily.one.event$date)
+# Calculate sliding sums of precipitation
+sliding_sums <- list()
 
-# Calculate rolling mean with a window of 10 days
-rolling_mean <- rollapply(zoo_data, width = time_lag, FUN = sum, align = "right", fill = NA)
+for (i in 1:nrow(tdf)) {
+  
+  # Extract data for one particular event (place_id + date)
+  daily.one.event <- daily[# Select target place
+                          daily$place_id == tdf[i,1] & 
+                            # Define starting date
+                            daily$date <= tdf[i,2],
+                          # Select necessary columns
+                          c("date", "Prcp", "Tmean")
+                           ]
 
-# Convert the result back to a data frame
-rolling_mean_df <- data.frame(date = index(rolling_mean), Rolling_Mean_Precipitation = coredata(rolling_mean))
+  sliding_sums[[i]] <- meanslidwin(data = daily.one.event,
+                                  datevar = date,
+                                  xvar = Prcp,
+                                  time_lag = 10)
+  
+  sliding_sums[[i]] <- as.data.frame.matrix(
+    t(as.data.frame(sliding_sums[[i]]))
+    )
+}
 
-# Sort the resulting data frame by Date in descending order
-rolling_mean_df <- rolling_mean_df[order(rolling_mean_df$date, decreasing = TRUE), ]
-# each mean value corresponds to the last day of the 10-day window
+# Bind results for each combination of date and place into a single dataframe
+Prcp_sliding <- bind_rows(sliding_sums)
 
-# Cut by fixed dates
-# July 1st
-# Define day of year for the July 1st for the year of event
-july_1st <- yday(paste0(year(daily.one.event$date[1]), "-07-01"))
+# add prefix 'Prcp_' to all column names
+colnames(Prcp_sliding) <- paste('Prcp', c(1:ncol(Prcp_sliding)), sep = '_')
 
-# Define day of year for the July 1st for the year of event
-mar_1st <- yday(paste0(year(daily.one.event$date[1]), "-03-01"))
+# Merge sliding means/sums with bat data
+covariates <- tdf %>% 
+  bind_cols(Tmeans_sliding, Prcp_sliding) %>% 
+  select(-n)
 
-rolling_mean_df <- rolling_mean_df %>% 
-  mutate(doy = yday(date)) %>% 
-  filter(doy <= july_1st & doy >= mar_1st) %>% 
-  select(-doy)
+df_merged <- df %>% 
+  left_join(covariates, by = c("place_id", "date"))
 
-Rolling_Mean_Precipitation <- rolling_mean_df[,2]
-
-# Append vectors with rolling temperatures and precipitation
-combined_rolling_means <- c(Rolling_Mean_Temperature, Rolling_Mean_Precipitation)
-
-
-
-
-
-
+# Remove temporary variables
+rm(covariates, daily, daily.one.event, df, Prcp_sliding, 
+   Tmeans_sliding, sliding_means, sliding_sums, tdf, i, 
+   meanslidwin, sumslidwin, check_my_var)
 ```
+
+
+# Fit models
+
+
 
 
 
