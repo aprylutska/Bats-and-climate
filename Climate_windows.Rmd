@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Data preparation
+# Data preparation
 Setting up a session
 
 ```{r, echo=FALSE, message=FALSE}
@@ -81,7 +81,7 @@ df <- df %>%
 ```
 
 
-## Exploration of the dynamics of growth metrics 
+# Exploration of the dynamics of growth metrics 
 How Ra related to W?
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
@@ -165,8 +165,8 @@ rm(p_Ra_day_4years, p_W_day_4years)
 
 
 
-## Check different growth metrics for variation during inventory time
-### Ra
+# Check different growth metrics for variation during inventory time
+## Ra
 fit simple lm 
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
@@ -175,7 +175,7 @@ check_my_var(df, "Ra", "day")
 
 Ra is weakly related to the time of capture. 
 
-### W
+## W
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 check_my_var(df, "W", "day")
@@ -211,7 +211,7 @@ rm(mod)
 That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
 
-### BMI
+## BMI
 ```{r, warning=FALSE, message=FALSE}
 check_my_var(df, "BMI", "day")
 ```
@@ -287,101 +287,268 @@ df <- df %>%
 tdf <- df %>% 
   count(place_id, date)
 
-# Extract data for one event (place_id + date)
-daily.one.event <- daily[# Select target place
-                        daily$place_id == tdf[1,1] & 
-                          # Define starting date
-                          daily$date <= tdf[1,2],
-                        # Select necessary columns
-                        c("date", "Prcp", "Tmean")
-                         ]
-
 # Custom function to calculate means of variable (xvar) in retrospective sliding window
-source("./functions/meanslidwin.R")
-source("./functions/sumslidwin.R")
+source("./functions/meanslidwin.R")        # Mean temperature
+source("./functions/sumslidwin.R")         # Summed precipitation
+source("./functions/retrospective_clim.R") # Wrapper for two previous
 
-# Calculate sliding means of temperatures
-sliding_means <- list()
+# Calculate retrospective mean temperatures (Tmean) and cumulative precipitation (Prcp)
+# for each bat capture event, for defined time lag.
 
-for (i in 1:nrow(tdf)) {
-  
-  # Extract data for one particular event (place_id + date)
-  daily.one.event <- daily[# Select target place
-                          daily$place_id == tdf[i,1] & 
-                            # Define starting date
-                            daily$date <= tdf[i,2],
-                          # Select necessary columns
-                          c("date", "Prcp", "Tmean")
-                           ]
+# Time lag 10 days
+covariates <- retrospective_clim(events = tdf,
+                                 daily_clim = daily,
+                                 time_lag = 10,
+                                 startdayofyear = "03-01",
+                                 enddayofyear = "07-01")
 
-  sliding_means[[i]] <- meanslidwin(data = daily.one.event,
-                                  datevar = date,
-                                  xvar = Tmean,
-                                  time_lag = 10)
-  
-  sliding_means[[i]] <- as.data.frame.matrix(
-    t(as.data.frame(sliding_means[[i]]))
-    )
-}
+df_retrospective_lag10d <- df %>% 
+  left_join(covariates, by = c("place_id", "date"))
 
-# Bind results for each combination of date and place into a single dataframe
-Tmeans_sliding <- bind_rows(sliding_means)
+# Time lag 15 days
+covariates <- retrospective_clim(events = tdf,
+                                 daily_clim = daily,
+                                 time_lag = 15,
+                                 startdayofyear = "03-01",
+                                 enddayofyear = "07-01")
 
-# add prefix 'Tmean_' to all column names
-colnames(Tmeans_sliding) <- paste('Tmean', c(1:ncol(Tmeans_sliding)), sep = '_')
+df_retrospective_lag15d <- df %>% 
+  left_join(covariates, by = c("place_id", "date"))
 
+# Time lag 20 days
+covariates <- retrospective_clim(events = tdf,
+                                 daily_clim = daily,
+                                 time_lag = 20,
+                                 startdayofyear = "03-01",
+                                 enddayofyear = "07-01")
 
-# Calculate sliding sums of precipitation
-sliding_sums <- list()
+df_retrospective_lag20d <- df %>% 
+  left_join(covariates, by = c("place_id", "date"))
 
-for (i in 1:nrow(tdf)) {
-  
-  # Extract data for one particular event (place_id + date)
-  daily.one.event <- daily[# Select target place
-                          daily$place_id == tdf[i,1] & 
-                            # Define starting date
-                            daily$date <= tdf[i,2],
-                          # Select necessary columns
-                          c("date", "Prcp", "Tmean")
-                           ]
+# Time lag 30 days
+covariates <- retrospective_clim(events = tdf,
+                                 daily_clim = daily,
+                                 time_lag = 30,
+                                 startdayofyear = "03-01",
+                                 enddayofyear = "07-01")
 
-  sliding_sums[[i]] <- meanslidwin(data = daily.one.event,
-                                  datevar = date,
-                                  xvar = Prcp,
-                                  time_lag = 10)
-  
-  sliding_sums[[i]] <- as.data.frame.matrix(
-    t(as.data.frame(sliding_sums[[i]]))
-    )
-}
-
-# Bind results for each combination of date and place into a single dataframe
-Prcp_sliding <- bind_rows(sliding_sums)
-
-# add prefix 'Prcp_' to all column names
-colnames(Prcp_sliding) <- paste('Prcp', c(1:ncol(Prcp_sliding)), sep = '_')
-
-# Merge sliding means/sums with bat data
-covariates <- tdf %>% 
-  bind_cols(Tmeans_sliding, Prcp_sliding) %>% 
-  select(-n)
-
-df_merged <- df %>% 
+df_retrospective_lag30d <- df %>% 
   left_join(covariates, by = c("place_id", "date"))
 
 # Remove temporary variables
-rm(covariates, daily, daily.one.event, df, Prcp_sliding, 
-   Tmeans_sliding, sliding_means, sliding_sums, tdf, i, 
-   meanslidwin, sumslidwin, check_my_var)
+rm(covariates, daily, df, tdf, check_my_var, meanslidwin, sumslidwin, retrospective_clim)
 ```
 
 
 # Fit models
 
+Fit the models with different time lag and types of interactions (yes/no), for each response variable (Ra and BMI) separately.
+
+```{r}
+# Call custom function to produce a series of candidate models (list) and their 
+# names (vector), combined in a single list of two.
+source("./functions/bulk.model.fit.R")
+
+## Ra
+# Time lag 10 days
+df_Ra_tl10 <- df_retrospective_lag10d[, c(7,       # column with the response var (Ra)
+             12:ncol(df_retrospective_lag10d))     # columns with independent variables
+        ]
+
+models_wo_interaction_tl10 <- bulk.model.fit(data = df_Ra_tl10,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl10")
+
+models_w_interaction_tl10 <- bulk.model.fit(data = df_Ra_tl10,
+                                       response_var = "Ra",
+                                       interaction = "*",
+                                       prefix = "tl10")
+
+# Time lag 15 days
+df_Ra_tl15 <- df_retrospective_lag15d[, c(7,       # column with the response var (Ra)
+             12:ncol(df_retrospective_lag15d))     # columns with independent variables
+        ]
+
+models_wo_interaction_tl15 <- bulk.model.fit(data = df_Ra_tl15,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl15")
+
+models_w_interaction_tl15 <- bulk.model.fit(data = df_Ra_tl15,
+                                        response_var = "Ra",
+                                        interaction = "*",
+                                        prefix = "tl15")
+
+# Time lag 20 days
+df_Ra_tl20 <- df_retrospective_lag20d[, c(7,       # column with the response var (Ra)
+             12:ncol(df_retrospective_lag20d))     # columns with independent variables
+        ]
+
+models_wo_interaction_tl20 <- bulk.model.fit(data = df_Ra_tl20,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl20")
+
+models_w_interaction_tl20 <- bulk.model.fit(data = df_Ra_tl20,
+                                        response_var = "Ra",
+                                        interaction = "*",
+                                        prefix = "tl20")
+
+# Time lag 30 days
+df_Ra_tl30 <- df_retrospective_lag30d[, c(7,       # column with the response var (Ra)
+             12:ncol(df_retrospective_lag15d))     # columns with independent variables
+        ]
+
+models_wo_interaction_tl30 <- bulk.model.fit(data = df_Ra_tl30,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl30")
+
+models_w_interaction_tl30 <- bulk.model.fit(data = df_Ra_tl30,
+                                        response_var = "Ra",
+                                        interaction = "*",
+                                        prefix = "tl30")
+
+# Combine models into a single list
+models_list_Ra <- c(models_wo_interaction_tl10[[1]],
+               models_w_interaction_tl10[[1]],
+               models_wo_interaction_tl15[[1]],
+               models_w_interaction_tl15[[1]],
+               models_wo_interaction_tl20[[1]],
+               models_w_interaction_tl20[[1]],
+               models_wo_interaction_tl30[[1]],
+               models_w_interaction_tl30[[1]])
+
+# Combine model names into a single vector
+model.names_Ra <- c(models_wo_interaction_tl10[[2]],
+               models_w_interaction_tl10[[2]],
+               models_wo_interaction_tl15[[2]],
+               models_w_interaction_tl15[[2]],
+               models_wo_interaction_tl20[[2]],
+               models_w_interaction_tl20[[2]],
+               models_wo_interaction_tl30[[2]],
+               models_w_interaction_tl30[[2]])
+
+## BMI
+# Time lag 10 days
+df_BMI_tl10 <- df_retrospective_lag10d[, c(11,    # column with the response var (BMI)
+             12:ncol(df_retrospective_lag10d))    # columns with independent variables
+        ]
+
+models_wo_interaction_tl10 <- bulk.model.fit(data = df_BMI_tl10,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl10")
+
+models_w_interaction_tl10 <- bulk.model.fit(data = df_BMI_tl10,
+                                       response_var = "BMI",
+                                       interaction = "*",
+                                       prefix = "tl10")
+
+# Time lag 15 days
+df_BMI_tl15 <- df_retrospective_lag15d[, c(11,    # column with the response var (BMI)
+             12:ncol(df_retrospective_lag15d))    # columns with independent variables
+        ]
+
+models_wo_interaction_tl15 <- bulk.model.fit(data = df_BMI_tl15,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl15")
+
+models_w_interaction_tl15 <- bulk.model.fit(data = df_BMI_tl15,
+                                        response_var = "BMI",
+                                        interaction = "*",
+                                        prefix = "tl15")
+
+# Time lag 20 days
+df_BMI_tl20 <- df_retrospective_lag20d[, c(11,    # column with the response var (BMI)
+             12:ncol(df_retrospective_lag20d))    # columns with independent variables
+        ]
+
+models_wo_interaction_tl20 <- bulk.model.fit(data = df_BMI_tl20,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl20")
+
+models_w_interaction_tl20 <- bulk.model.fit(data = df_BMI_tl20,
+                                        response_var = "BMI",
+                                        interaction = "*",
+                                        prefix = "tl20")
+
+# Time lag 30 days
+df_BMI_tl30 <- df_retrospective_lag30d[, c(11,   # column with the response var (BMI)
+             12:ncol(df_retrospective_lag30d))   # columns with independent variables
+        ]
+
+models_wo_interaction_tl30 <- bulk.model.fit(data = df_BMI_tl30,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl30")
+
+models_w_interaction_tl30 <- bulk.model.fit(data = df_BMI_tl30,
+                                        response_var = "BMI",
+                                        interaction = "*",
+                                        prefix = "tl30")
+
+# Combine models into a single list
+models_list_BMI <- c(models_wo_interaction_tl10[[1]],
+               models_w_interaction_tl10[[1]],
+               models_wo_interaction_tl15[[1]],
+               models_w_interaction_tl15[[1]],
+               models_wo_interaction_tl20[[1]],
+               models_w_interaction_tl20[[1]],
+               models_wo_interaction_tl30[[1]],
+               models_w_interaction_tl30[[1]])
+
+# Combine model names into a single vector
+model.names_BMI <- c(models_wo_interaction_tl10[[2]],
+               models_w_interaction_tl10[[2]],
+               models_wo_interaction_tl15[[2]],
+               models_w_interaction_tl15[[2]],
+               models_wo_interaction_tl20[[2]],
+               models_w_interaction_tl20[[2]],
+               models_wo_interaction_tl30[[2]],
+               models_w_interaction_tl30[[2]])
+
+# Remove temporary objects
+rm(df_Ra_tl10, df_Ra_tl15, df_Ra_tl20, df_Ra_tl30,
+   df_BMI_tl10, df_BMI_tl15, df_BMI_tl20, df_BMI_tl30,
+   models_wo_interaction_tl10, models_w_interaction_tl10,
+   models_wo_interaction_tl15, models_w_interaction_tl15,
+   models_wo_interaction_tl20, models_w_interaction_tl20,
+   models_wo_interaction_tl30, models_w_interaction_tl30)
+
+# Free-up memory
+gc()
+```
 
 
 
 
+K: The number of parameters in the model.
+AICc: The AIC value of the model. The lowercase ‘c’ indicates that the AIC has been calculated from the AIC corrected for small sample sizes.
+Delta_AICc: The difference between the AIC of the best model compared to the current model being compared.
+AICcWt: The proportion of the total predictive power that can be found in the model.
+Cum.Wt: The cumulative sum of the AIC weights.
+LL: The log-likelihood of the model. This tells us how likely the model is, given the data we used.
+
+See [the blogpost](https://stats.stackexchange.com/questions/232465/how-to-compare-models-on-the-basis-of-aic) for deltaAIC theory.
+
+```{r}
+library(AICcmodavg) # to compare models by AIC
+
+model.ranking.Ra <- aictab(cand.set = models_list_Ra, modnames = model.names_Ra)
+    
+# View model ranged from the best (least deltaAIC) to the worst, only 20 best models
+head(model.ranking.Ra, n = 20L)
+```
 
 
+```{r}
+model.ranking.BMI <- aictab(cand.set = models_list_BMI, modnames = model.names_BMI)
+    
+# View model ranged from the best (least deltaAIC) to the worst, only 20 best models
+head(model.ranking.BMI, n = 20L)
+```
 
