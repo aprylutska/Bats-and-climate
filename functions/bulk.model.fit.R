@@ -16,74 +16,151 @@
 #   interaction) or "*" (with interaction)
 
 
-bulk.model.fit <- function(data, response_var, interaction, prefix) {
-  
-  # Create an empty list to store the models
-  models_list <- list()
-  
-  # Calculate the number of columns for each independent variable
-  num_independent_vars <- (ncol(data) - 1) / 2
-  
-  # Loop through each combination of independent variables
-  for (i in 1:num_independent_vars) {
-    # Extract the names of the independent variables
-    # Add 1 to skip the first column (response variable)
-    independent_var1 <- colnames(data)[i + 1]
-    # Add num_independent_vars to move to the second set of independent variables
-    independent_var2 <- colnames(data)[i + 1 + num_independent_vars]
+bulk.model.fit <- function(data, response_var, interaction, prefix, random = NULL) {
+  # If argument "random" is empty, fit a simple linear model with lm() function
+  if (is.null(random)) {
     
-    # Create the formula for the linear model
-    formula <- as.formula(paste(response_var, "~", independent_var1, 
-                                interaction, independent_var2))
+    # Create an empty list to store the models
+    models_list <- list()
     
-    # Fit the linear model
-    model <- lm(formula, data = data)
+    # Calculate the number of columns for each independent variable
+    num_independent_vars <- (ncol(data) - 1) / 2
     
-    # Add the model to the list
-    # Set rules for naming, depending on either there is interaction between 
-    # independent variables or not
-
-    if(interaction == "+"){
-      model_name <- paste0(prefix, "_", independent_var1, "_", independent_var2)
+    # Loop through each combination of independent variables
+    for (i in 1:num_independent_vars) {
+      # Extract the names of the independent variables
+      # Add 1 to skip the first column (response variable)
+      independent_var1 <- colnames(data)[i + 1]
+      # Add num_independent_vars to move to the second set of independent variables
+      independent_var2 <- colnames(data)[i + 1 + num_independent_vars]
+      
+      # Create the formula for the linear model
+      formula <- as.formula(paste(response_var, "~", independent_var1, 
+                                  interaction, independent_var2))
+      
+      # Fit the linear model
+      model <- lm(formula, data = data)
+      
+      # Add the model to the list
+      # Set rules for naming, depending on either there is interaction between 
+      # independent variables or not
+  
+      if(interaction == "+"){
+        model_name <- paste0(prefix, "_", independent_var1, "_", independent_var2)
+        } else {
+          model_name <- paste0(prefix, "_", independent_var1, "*", independent_var2)
+        }
+  
+      models_list[[model_name]] <- model
+    }
+    
+    # Access the models using the combination of independent variable names as keys
+    # For example, to access the model for the combination of the first 
+    # independent variables:
+    # models_list[["Tmean_1_Prcp_1"]]
+    
+    
+    # Create an empty vector to store the model names
+    model.names <- c()
+    
+    # Calculate the number of columns for each independent variable
+    num_independent_vars <- (ncol(data) - 1) / 2
+    
+    # Loop through each combination of independent variables
+    for (i in 1:num_independent_vars) {
+      # Extract the names of the independent variables
+      # Add 1 to skip the first column (response variable)
+      independent_var1 <- colnames(data)[i + 1]
+      # Add num_independent_vars to move to the second set of independent variables
+      independent_var2 <- colnames(data)[i + 1 + num_independent_vars]
+      
+      # Construct the model name
+      # Set rules for naming, depending on either there is interaction between 
+      # independent variables or not
+  
+      if(interaction == "+"){
+        model_name <- paste0(prefix, "_", independent_var1, "+", independent_var2)
+        } else {
+          model_name <- paste0(prefix, "_", independent_var1, "*", independent_var2)
+        }
+      
+      # Add the model name to the model.names vector
+      model.names <- c(model.names, model_name)
+    }
+    
+    # If argument "random" is defined, fit a mixed effect linear model with 
+    # lme4::lmer() function instead
+  } else {
+    # Create an empty list to store the models
+    models_list <- list()
+    
+    # Calculate the number of columns for each independent variable
+    num_independent_vars <- (ncol(data) - 2) / 2
+    
+    # Loop through each combination of independent variables
+    for (i in 1:num_independent_vars) {
+      # Extract the names of the independent variables
+      # Add 2 to skip the first column (response variable) and
+      # the second - random effect variable
+      independent_var1 <- colnames(data)[i + 2]
+      # Add num_independent_vars to move to the second set of independent variables
+      independent_var2 <- colnames(data)[i + 2 + num_independent_vars]
+      
+      # Create the formula for the linear model
+      formula <- as.formula(paste(response_var, "~", independent_var1, 
+                                  interaction, independent_var2, "+",
+                                  "(1 | ", random, ")"))
+      
+      # Fit the linear model
+      model <- lmer(formula, data = data)
+      
+      # Add the model to the list
+      # Set rules for naming, depending on either there is interaction between 
+      # independent variables or not
+      
+      if(interaction == "+"){
+        model_name <- paste0(prefix, "_", independent_var1, "_", independent_var2, "_1|", random)
       } else {
-        model_name <- paste0(prefix, "_", independent_var1, "*", independent_var2)
+        model_name <- paste0(prefix, "_", independent_var1, "*", independent_var2, "_1|", random)
       }
-
-    models_list[[model_name]] <- model
-  }
-  
-  # Access the models using the combination of independent variable names as keys
-  # For example, to access the model for the combination of the first 
-  # independent variables:
-  # models_list[["Tmean_1_Prcp_1"]]
-  
-  
-  # Create an empty vector to store the model names
-  model.names <- c()
-  
-  # Calculate the number of columns for each independent variable
-  num_independent_vars <- (ncol(data) - 1) / 2
-  
-  # Loop through each combination of independent variables
-  for (i in 1:num_independent_vars) {
-    # Extract the names of the independent variables
-    # Add 1 to skip the first column (response variable)
-    independent_var1 <- colnames(data)[i + 1]
-    # Add num_independent_vars to move to the second set of independent variables
-    independent_var2 <- colnames(data)[i + 1 + num_independent_vars]
+      
+      models_list[[model_name]] <- model
+    }
     
-    # Construct the model name
-    # Set rules for naming, depending on either there is interaction between 
-    # independent variables or not
-
-    if(interaction == "+"){
-      model_name <- paste0(prefix, "_", independent_var1, "_", independent_var2)
+    # Access the models using the combination of independent variable names as keys
+    # For example, to access the model for the combination of the first 
+    # independent variables:
+    # models_list[["Tmean_1_Prcp_1"]]
+    
+    
+    # Create an empty vector to store the model names
+    model.names <- c()
+    
+    # Calculate the number of columns for each independent variable
+    num_independent_vars <- (ncol(data) - 2) / 2
+    
+    # Loop through each combination of independent variables
+    for (i in 1:num_independent_vars) {
+      # Extract the names of the independent variables
+      # Add 2 to skip the first column (response variable) and
+      # the second - random effect variable
+      independent_var1 <- colnames(data)[i + 2]
+      # Add num_independent_vars to move to the second set of independent variables
+      independent_var2 <- colnames(data)[i + 2 + num_independent_vars]
+      
+      # Construct the model name
+      # Set rules for naming, depending on either there is interaction between 
+      # independent variables or not
+      
+      if(interaction == "+"){
+        model_name <- paste0(prefix, "_", independent_var1, "+", independent_var2, "_1|", random)
       } else {
-        model_name <- paste0(prefix, "_", independent_var1, "*", independent_var2)
+        model_name <- paste0(prefix, "_", independent_var1, "*", independent_var2, "_1|", random)
       }
-    
-    # Add the model name to the model.names vector
-    model.names <- c(model.names, model_name)
+      
+      # Add the model name to the model.names vector
+      model.names <- c(model.names, model_name)
+    }
   }
   
   # Access the model names using the index of the model.names vector

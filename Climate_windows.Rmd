@@ -19,6 +19,9 @@ library(lubridate) # for transforming date variables
 library(easyclimate) # for daily climate data extraction
 library(sf) # for spatial operations
 library(gridExtra) # for ggplot plates
+library(grid)
+library(AICcmodavg) # to compare models by AIC
+library(performance)
 # library(jtools)
 
 # Set custom theme for ggplot2 plots
@@ -69,16 +72,27 @@ sessionInfo() # to check your locale
 
 Since we have nights ("days") with very few bats captured, we decided to drop the nights with less then 10 bats.
 
-```{r}
-df <- df %>%  
+```{r, echo=FALSE, message=FALSE}
+df <- df %>%
   # count bats per day
-  count(date) %>% 
+  count(date) %>%
   # choose days where more than 10 bats
-  filter(n > 10) %>% 
+  filter(n >= 5) %>%
   # subset with days where more than 10 bats
-  inner_join(df, by = join_by(date)) %>% 
+  inner_join(df, by = join_by(date)) %>%
+  # filter(Territory != "Smolensk" &
+  #          Territory != "Bryansk") %>%
+  filter(Territory == "Homilsha") %>% 
   select(-n)
+
+# Check how many bats we captured during the night
+ggplot(df, aes(x = day, fill = Territory)) +
+  geom_histogram() +
+  labs(x = "Day of the year",
+       y = "Number of bats") +
+  facet_wrap(vars(Year))
 ```
+
 
 
 # Exploration of the dynamics of growth metrics 
@@ -170,7 +184,8 @@ rm(p_Ra_day_4years, p_W_day_4years)
 fit simple lm 
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-check_my_var(df, "Ra", "day")
+check_my_var(df, "Ra", "day", years = "Year")
+
 ```
 
 Ra is weakly related to the time of capture. 
@@ -178,7 +193,7 @@ Ra is weakly related to the time of capture.
 ## W
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-check_my_var(df, "W", "day")
+check_my_var(df, "W", "day", "Year")
 ```
 
 W strongly related to the time of capture.
@@ -187,18 +202,12 @@ As we can see, Ra remains constant over inventory period, and probably doesn't d
 
 In other words, bats captured later might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated series of synthetic growth metrics, and test their variation over the inventory period and between the years.
 
-Check how many bats we captured during the night
-```{r, echo=FALSE, message=FALSE}
-ggplot(df, aes(day)) +
-  geom_histogram() +
-  labs(x = "Day of the year",
-       y = "Number of bats") +
-  facet_wrap(vars(Year))
-```
+
+## BMI (W~doy)
 Since weight seems to be growing during inventory timespan, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body Mass Index (BMI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
 
 ```{r}
-# Fit simple linear model
+# Fit simple linear model (all years altogether)
 mod <- lm(log(W) ~ log(day), data = df)
 
 # Get residuals
@@ -211,9 +220,38 @@ rm(mod)
 That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
 
-## BMI
+```{r}
+# # Fit simple linear models, but for each year separately, then merge the results
+# # Prepare custom function for Body Mass Index calculation
+# bmi_lm <- function(df){
+#   lm(log(W) ~ log(day), data = df)
+# }
+# 
+# # Nest df by Year and fit separate linear models for each year
+# df_nested <- df %>% 
+#   group_by(Year) %>% 
+#   nest() %>% 
+#   mutate(model = map(data, bmi_lm)) %>% 
+#   mutate(BMI = map(model, residuals))
+# 
+# # Unnest data and merge original data with newly calculated residuals
+# df_BMI <- df_nested %>% 
+#   unnest(BMI) %>% 
+#   select(-data, -model)
+# 
+# df <- df_nested %>% 
+#   unnest(data) %>% 
+#   select(-model, -BMI) %>% 
+#   bind_cols(df_BMI) %>% 
+#   rename(Year = `Year...1`) %>% 
+#   select(-`Year...10`)
+# 
+# rm(bmi_lm, df_nested, df_BMI)
+```
+
+
 ```{r, warning=FALSE, message=FALSE}
-check_my_var(df, "BMI", "day")
+check_my_var(df, "BMI", "day", "Year")
 ```
 
 BCI is weakly related to the time of caption, as it was expected from the method of calculation.
@@ -234,7 +272,6 @@ ggplot(data = df, aes(day, BMI, colour = Year)) +
   geom_smooth(method = "lm", aes(fill = Year)) + 
   labs(x = "Day of the year",
        y = "Body Mass Index")
-  # facet_wrap(vars(sex))
 ```
 
 Therefore, we choose to test two alternative response variables - forearm length (Ra) and Body Mass Index (BMI), as a possible growth metric in our research.
@@ -282,7 +319,7 @@ df <- df %>%
 
 # Make retrospective climate
 
-```{r}
+```{r, message=FALSE}
 # Make aggregated data frame, where one row = one capture event (place_id + date)
 tdf <- df %>% 
   count(place_id, date)
@@ -341,10 +378,38 @@ rm(covariates, daily, df, tdf, check_my_var, meanslidwin, sumslidwin, retrospect
 
 
 # Fit models
+Explore possible dependencies between response variable (either Ra or BMI) and independent variables (Tmean and Prcp).
+
+```{r}
+df_retrospective_lag20d %>% 
+  ggplot(aes(x = day, y = BMI, colour = Year)) +
+  geom_point() +
+  geom_smooth(se = FALSE, method = lm) +
+  facet_wrap(vars(Territory), 
+             # scales = "free"
+             )
+```
+
 
 Fit the models with different time lag and types of interactions (yes/no), for each response variable (Ra and BMI) separately.
 
+
+
+## Simple Linear models 
+Simple linear models with two independent variables (Tmean and Prcp), without and with interactions.
+
 ```{r}
+# Fit the null model
+# Linear simple and mixed effect models without fixed effects.
+# Ra
+mod_0_Ra <- lm(Ra ~ 1, data = df_retrospective_lag10d)
+Ra_null <- list(mod_0_Ra)
+
+# BMI
+mod_0_BMI <- lm(BMI ~ 1, data = df_retrospective_lag10d)
+BMI_null <- list(mod_0_BMI)
+
+
 # Call custom function to produce a series of candidate models (list) and their 
 # names (vector), combined in a single list of two.
 source("./functions/bulk.model.fit.R")
@@ -411,24 +476,27 @@ models_w_interaction_tl30 <- bulk.model.fit(data = df_Ra_tl30,
                                         prefix = "tl30")
 
 # Combine models into a single list
-models_list_Ra <- c(models_wo_interaction_tl10[[1]],
-               models_w_interaction_tl10[[1]],
-               models_wo_interaction_tl15[[1]],
-               models_w_interaction_tl15[[1]],
-               models_wo_interaction_tl20[[1]],
-               models_w_interaction_tl20[[1]],
-               models_wo_interaction_tl30[[1]],
-               models_w_interaction_tl30[[1]])
+models_list_Ra <- c(Ra_null,
+                    models_wo_interaction_tl10[[1]],
+                    models_w_interaction_tl10[[1]],
+                    models_wo_interaction_tl15[[1]],
+                    models_w_interaction_tl15[[1]],
+                    models_wo_interaction_tl20[[1]],
+                    models_w_interaction_tl20[[1]],
+                    models_wo_interaction_tl30[[1]],
+                    models_w_interaction_tl30[[1]])
+
 
 # Combine model names into a single vector
-model.names_Ra <- c(models_wo_interaction_tl10[[2]],
-               models_w_interaction_tl10[[2]],
-               models_wo_interaction_tl15[[2]],
-               models_w_interaction_tl15[[2]],
-               models_wo_interaction_tl20[[2]],
-               models_w_interaction_tl20[[2]],
-               models_wo_interaction_tl30[[2]],
-               models_w_interaction_tl30[[2]])
+model.names_Ra <- c("mod_0_Ra",
+                    models_wo_interaction_tl10[[2]],
+                    models_w_interaction_tl10[[2]],
+                    models_wo_interaction_tl15[[2]],
+                    models_w_interaction_tl15[[2]],
+                    models_wo_interaction_tl20[[2]],
+                    models_w_interaction_tl20[[2]],
+                    models_wo_interaction_tl30[[2]],
+                    models_w_interaction_tl30[[2]])
 
 ## BMI
 # Time lag 10 days
@@ -492,27 +560,33 @@ models_w_interaction_tl30 <- bulk.model.fit(data = df_BMI_tl30,
                                         prefix = "tl30")
 
 # Combine models into a single list
-models_list_BMI <- c(models_wo_interaction_tl10[[1]],
-               models_w_interaction_tl10[[1]],
-               models_wo_interaction_tl15[[1]],
-               models_w_interaction_tl15[[1]],
-               models_wo_interaction_tl20[[1]],
-               models_w_interaction_tl20[[1]],
-               models_wo_interaction_tl30[[1]],
-               models_w_interaction_tl30[[1]])
+models_list_BMI <- c(BMI_null,
+                     models_wo_interaction_tl10[[1]],
+                     models_w_interaction_tl10[[1]],
+                     models_wo_interaction_tl15[[1]],
+                     models_w_interaction_tl15[[1]],
+                     models_wo_interaction_tl20[[1]],
+                     models_w_interaction_tl20[[1]],
+                     models_wo_interaction_tl30[[1]],
+                     models_w_interaction_tl30[[1]])
 
 # Combine model names into a single vector
-model.names_BMI <- c(models_wo_interaction_tl10[[2]],
-               models_w_interaction_tl10[[2]],
-               models_wo_interaction_tl15[[2]],
-               models_w_interaction_tl15[[2]],
-               models_wo_interaction_tl20[[2]],
-               models_w_interaction_tl20[[2]],
-               models_wo_interaction_tl30[[2]],
-               models_w_interaction_tl30[[2]])
+model.names_BMI <- c("mod_0_BMI",
+                     # "mod_0_BMI_tl15",
+                     # "mod_0_BMI_tl20",
+                     # "mod_0_BMI_tl30",
+                     models_wo_interaction_tl10[[2]],
+                     models_w_interaction_tl10[[2]],
+                     models_wo_interaction_tl15[[2]],
+                     models_w_interaction_tl15[[2]],
+                     models_wo_interaction_tl20[[2]],
+                     models_w_interaction_tl20[[2]],
+                     models_wo_interaction_tl30[[2]],
+                     models_w_interaction_tl30[[2]])
 
 # Remove temporary objects
-rm(df_Ra_tl10, df_Ra_tl15, df_Ra_tl20, df_Ra_tl30,
+rm(mod_0_Ra, Ra_null, mod_0_BMI, BMI_null,
+   df_Ra_tl10, df_Ra_tl15, df_Ra_tl20, df_Ra_tl30,
    df_BMI_tl10, df_BMI_tl15, df_BMI_tl20, df_BMI_tl30,
    models_wo_interaction_tl10, models_w_interaction_tl10,
    models_wo_interaction_tl15, models_w_interaction_tl15,
@@ -524,8 +598,6 @@ gc()
 ```
 
 
-
-
 K: The number of parameters in the model.
 AICc: The AIC value of the model. The lowercase ‘c’ indicates that the AIC has been calculated from the AIC corrected for small sample sizes.
 Delta_AICc: The difference between the AIC of the best model compared to the current model being compared.
@@ -535,20 +607,326 @@ LL: The log-likelihood of the model. This tells us how likely the model is, give
 
 See [the blogpost](https://stats.stackexchange.com/questions/232465/how-to-compare-models-on-the-basis-of-aic) for deltaAIC theory.
 
+### Assessing performance (AIC)
+#### Ra
 ```{r}
 library(AICcmodavg) # to compare models by AIC
 
-model.ranking.Ra <- aictab(cand.set = models_list_Ra, modnames = model.names_Ra)
+model.ranking.Ra <- aictab(cand.set = models_list_Ra,
+                           modnames = model.names_Ra)
     
 # View model ranged from the best (least deltaAIC) to the worst, only 20 best models
 head(model.ranking.Ra, n = 20L)
 ```
 
 
+
+
+```{r, message=FALSE}
+# Custom function to check model fit and assumptions
+source("./functions/check.my.model.R")
+
+# The first model in each list is the Null one, so to find model's index, add 1 
+# to the number of day-back for the model without interaction, and 1+123 = 124
+# for the models with interaction
+
+check.my.model(models_list_Ra[[match("tl10_Tmean_37*Prcp_37", model.names_Ra)]])
+```
+
+
+
+#### BMI
+
 ```{r}
-model.ranking.BMI <- aictab(cand.set = models_list_BMI, modnames = model.names_BMI)
+model.ranking.BMI <- aictab(cand.set = models_list_BMI,
+                            modnames = model.names_BMI)
     
 # View model ranged from the best (least deltaAIC) to the worst, only 20 best models
 head(model.ranking.BMI, n = 20L)
 ```
+
+
+```{r}
+# The first model in each list is the Null one, so to find model's index, add 1 
+# to the number of day-back for the model without interaction, and 1+123 = 124
+# for the models with interaction
+
+
+check.my.model(models_list_BMI[[match("tl20_Tmean_73*Prcp_73", model.names_BMI)]])
+```
+
+## Mixed effect models
+
+```{r, message=FALSE}
+library(lme4)
+# Null models
+## Ra
+mod_mixed_0_Ra <- lmer(Ra ~ 1 + (1 | Year), data = df_retrospective_lag10d)
+Ra_null <- list(mod_mixed_0_Ra)
+
+## BMI
+mod_mixed_0_BMI <- lmer(BMI ~ 1 + (1 | Year), data = df_retrospective_lag10d)
+BMI_null <- list(mod_mixed_0_BMI)
+
+# Mixed effect models
+
+# Call custom function to produce a series of candidate models (list) and their 
+# names (vector), combined in a single list of two.
+source("./functions/bulk.model.fit.R")
+
+## Ra
+# Time lag 10 days
+df_Ra_tl10 <- df_retrospective_lag10d[, c(7,       # response var (Ra)
+                                          9,       # random effect var (Year)
+             12:ncol(df_retrospective_lag10d))     # independent variables
+        ]
+
+models_wo_interaction_tl10 <- bulk.model.fit(data = df_Ra_tl10,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl10",
+                                        random = "Year")
+
+
+models_w_interaction_tl10 <- bulk.model.fit(data = df_Ra_tl10,
+                                       response_var = "Ra",
+                                       interaction = "*",
+                                       prefix = "tl10",
+                                       random = "Year")
+
+# Time lag 15 days
+df_Ra_tl15 <- df_retrospective_lag15d[, c(7,       # response var (Ra)
+                                          9,       # random effect var (Year)
+             12:ncol(df_retrospective_lag15d))     # independent variables
+        ]
+
+models_wo_interaction_tl15 <- bulk.model.fit(data = df_Ra_tl15,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl15",
+                                        random = "Year")
+
+models_w_interaction_tl15 <- bulk.model.fit(data = df_Ra_tl15,
+                                        response_var = "Ra",
+                                        interaction = "*",
+                                        prefix = "tl15",
+                                        random = "Year")
+
+# Time lag 20 days
+df_Ra_tl20 <- df_retrospective_lag20d[, c(7,       # response var (Ra)
+                                          9,       # random effect var (Year)
+             12:ncol(df_retrospective_lag20d))     # independent variables
+        ]
+
+models_wo_interaction_tl20 <- bulk.model.fit(data = df_Ra_tl20,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl20",
+                                        random = "Year")
+
+models_w_interaction_tl20 <- bulk.model.fit(data = df_Ra_tl20,
+                                        response_var = "Ra",
+                                        interaction = "*",
+                                        prefix = "tl20",
+                                        random = "Year")
+
+# Time lag 30 days
+df_Ra_tl30 <- df_retrospective_lag30d[, c(7,       # response var (Ra)
+                                          9,       # random effect var (Year)
+             12:ncol(df_retrospective_lag30d))     # independent variables
+        ]
+
+models_wo_interaction_tl30 <- bulk.model.fit(data = df_Ra_tl30,
+                                        response_var = "Ra",
+                                        interaction = "+",
+                                        prefix = "tl30",
+                                        random = "Year")
+
+models_w_interaction_tl30 <- bulk.model.fit(data = df_Ra_tl30,
+                                        response_var = "Ra",
+                                        interaction = "*",
+                                        prefix = "tl30",
+                                        random = "Year")
+
+# Combine models into a single list
+models_list_Ra <- c(Ra_null,
+                    models_wo_interaction_tl10[[1]],
+                    models_w_interaction_tl10[[1]],
+                    models_wo_interaction_tl15[[1]],
+                    models_w_interaction_tl15[[1]],
+                    models_wo_interaction_tl20[[1]],
+                    models_w_interaction_tl20[[1]],
+                    models_wo_interaction_tl30[[1]],
+                    models_w_interaction_tl30[[1]])
+
+
+# Combine model names into a single vector
+model.names_Ra <- c("mod_0_Ra",
+                    models_wo_interaction_tl10[[2]],
+                    models_w_interaction_tl10[[2]],
+                    models_wo_interaction_tl15[[2]],
+                    models_w_interaction_tl15[[2]],
+                    models_wo_interaction_tl20[[2]],
+                    models_w_interaction_tl20[[2]],
+                    models_wo_interaction_tl30[[2]],
+                    models_w_interaction_tl30[[2]])
+
+## BMI
+# Time lag 10 days
+df_BMI_tl10 <- df_retrospective_lag10d[, c(11,    # response var (BMI)
+                                           9,     # random effect var (Year)
+             12:ncol(df_retrospective_lag10d))    # independent variables
+        ]
+
+models_wo_interaction_tl10 <- bulk.model.fit(data = df_BMI_tl10,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl10",
+                                        random = "Year")
+
+models_w_interaction_tl10 <- bulk.model.fit(data = df_BMI_tl10,
+                                       response_var = "BMI",
+                                       interaction = "*",
+                                       prefix = "tl10",
+                                        random = "Year")
+
+# Time lag 15 days
+df_BMI_tl15 <- df_retrospective_lag15d[, c(11,    # response var (BMI)
+                                           9,     # random effect var (Year)
+             12:ncol(df_retrospective_lag15d))    # independent variables
+        ]
+
+models_wo_interaction_tl15 <- bulk.model.fit(data = df_BMI_tl15,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl15",
+                                        random = "Year")
+
+models_w_interaction_tl15 <- bulk.model.fit(data = df_BMI_tl15,
+                                        response_var = "BMI",
+                                        interaction = "*",
+                                        prefix = "tl15",
+                                        random = "Year")
+
+# Time lag 20 days
+df_BMI_tl20 <- df_retrospective_lag20d[, c(11,    # response var (BMI)
+                                           9,     # random effect var (Year)
+             12:ncol(df_retrospective_lag20d))    # independent variables
+        ]
+
+models_wo_interaction_tl20 <- bulk.model.fit(data = df_BMI_tl20,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl20",
+                                        random = "Year")
+
+models_w_interaction_tl20 <- bulk.model.fit(data = df_BMI_tl20,
+                                        response_var = "BMI",
+                                        interaction = "*",
+                                        prefix = "tl20",
+                                        random = "Year")
+
+# Time lag 30 days
+df_BMI_tl30 <- df_retrospective_lag30d[, c(11,    # response var (BMI)
+                                           9,     # random effect var (Year)
+             12:ncol(df_retrospective_lag30d))    # independent variables
+        ]
+
+models_wo_interaction_tl30 <- bulk.model.fit(data = df_BMI_tl30,
+                                        response_var = "BMI",
+                                        interaction = "+",
+                                        prefix = "tl30",
+                                        random = "Year")
+
+models_w_interaction_tl30 <- bulk.model.fit(data = df_BMI_tl30,
+                                        response_var = "BMI",
+                                        interaction = "*",
+                                        prefix = "tl30",
+                                        random = "Year")
+
+# Combine models into a single list
+models_list_BMI <- c(BMI_null,
+                     models_wo_interaction_tl10[[1]],
+                     models_w_interaction_tl10[[1]],
+                     models_wo_interaction_tl15[[1]],
+                     models_w_interaction_tl15[[1]],
+                     models_wo_interaction_tl20[[1]],
+                     models_w_interaction_tl20[[1]],
+                     models_wo_interaction_tl30[[1]],
+                     models_w_interaction_tl30[[1]])
+
+# Combine model names into a single vector
+model.names_BMI <- c("mod_0_BMI",
+                     models_wo_interaction_tl10[[2]],
+                     models_w_interaction_tl10[[2]],
+                     models_wo_interaction_tl15[[2]],
+                     models_w_interaction_tl15[[2]],
+                     models_wo_interaction_tl20[[2]],
+                     models_w_interaction_tl20[[2]],
+                     models_wo_interaction_tl30[[2]],
+                     models_w_interaction_tl30[[2]])
+
+# Remove temporary objects
+rm(mod_0_Ra, Ra_null, mod_0_BMI, BMI_null,
+   df_Ra_tl10, df_Ra_tl15, df_Ra_tl20, df_Ra_tl30,
+   df_BMI_tl10, df_BMI_tl15, df_BMI_tl20, df_BMI_tl30,
+   models_wo_interaction_tl10, models_w_interaction_tl10,
+   models_wo_interaction_tl15, models_w_interaction_tl15,
+   models_wo_interaction_tl20, models_w_interaction_tl20,
+   models_wo_interaction_tl30, models_w_interaction_tl30)
+
+# Free-up memory
+gc()
+
+```
+
+### Assessing performance (AIC)
+#### Ra
+
+```{r}
+library(AICcmodavg) # to compare models by AIC
+
+model.ranking.Ra <- aictab(cand.set = models_list_Ra,
+                           modnames = model.names_Ra)
+    
+# View model ranged from the best (least deltaAIC) to the worst, only 20 best models
+head(model.ranking.Ra, n = 20L)
+```
+
+
+
+
+```{r, message=FALSE}
+# Custom function to check model fit and assumptions
+source("./functions/check.my.model.R")
+
+check.my.model(models_list_Ra[[match("tl10_Tmean_90*Prcp_90_1|Year", model.names_Ra)]],
+               mixed = TRUE)
+```
+
+#### BMI
+
+```{r}
+model.ranking.BMI <- aictab(cand.set = models_list_BMI,
+                            modnames = model.names_BMI)
+    
+# View model ranged from the best (least deltaAIC) to the worst, only 20 best models
+head(model.ranking.BMI, n = 20L)
+```
+
+
+```{r}
+check.my.model(models_list_BMI[[match("tl10_Tmean_20+Prcp_20_1|Year", model.names_BMI)]],
+               mixed = TRUE)
+```
+
+
+## Assessing performane (performance)
+
+```{r}
+compare_performance(models_list_BMI, rank = TRUE)
+```
+
+
+
 

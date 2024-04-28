@@ -1,9 +1,14 @@
 # Custom function to check dependency of selected growth metric on day across years
-check_my_var <- function(data, dependent_var, independent_var) {
+# data: data frame with dependent and independent variables
+# dependent_var: name of the dependent variable, in ""
+# independent_var: name of the independent variable, in ""
+# years: name of the variable containing years
+
+check_my_var <- function(data, dependent_var, independent_var, years) {
   
   formula <- formula(paste0(dependent_var, " ~ ", independent_var))
-
-  years <- list("2008", "2011", "2014", "2019")
+  
+  years <- unique(data[[years]])
   
   yearly_stat <- list()
   
