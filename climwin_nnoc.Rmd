@@ -33,8 +33,8 @@ mytheme <- theme_bw() +
 theme_set(mytheme)
 
 # Set model and figure directories
-modeldir <- "./models_nnoc/"
-figuredir <- "./figures_nnoc/"
+modeldir <- "./models_1000rep_23w_absW_nnoc/"
+figuredir <- "./figures_1000rep_23w_absW_nnoc/"
 
 # if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
 # To fix that, you need to re-map locate into US (will be back after restart R session)
@@ -85,7 +85,7 @@ df <- df %>%
   inner_join(df, by = join_by(date)) %>%
   filter(Territory != "Smolensk" &
            Territory != "Bryansk") %>%
-  filter(Territory != "Chornobyl") %>% 
+  filter(Territory != "Chornobyl") %>%
   # filter(Territory == "Homilsha") %>% 
   select(-n)
 
@@ -429,14 +429,21 @@ cinterval <- "week"
 
 # Upper and lower limit for tested climate windows respectively
 # Must correspond to the resolution chosen in ‘cinterval’
-# range <- c(250, 0) # if 'cinterval' set to "days"
-range <- c(30, 0) # if 'cinterval' set to "week"
+# if 'cinterval' set to "days"
+# range <- c(250, 0)
+
+# if 'cinterval' set to "week"
+# range <- c(30, 0) # (~ 1 Dec)
+range <- c(23, 0) # ~ 15 Jan
 
 stat <- "mean"
 
 func <- "lin"
 
-repeats = 1000 # number of repeats for randomization
+# number of repeats for randomization
+# repeats <- 5 # for metric = "C"
+repeats = 1000 # for metric = "AIC"
+
 # Metrics for assessing
 # metric = "C"
 metric = "AIC"
@@ -452,37 +459,37 @@ Candidate model fitting
 # Null model with no climate signal
 baseline <- lm(Ra ~ 1, data = df)
 
-# # Fit candidate model set
-# RaWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = "absolute", refday = c(01, 07),
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(RaWin, file = paste0(modeldir, "RaWin.Rdata"))
-# rm(RaWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# RaRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = "absolute", refday = c(01, 07),
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(RaRand, file = paste0(modeldir, "RaRand.Rdata"))
-# rm(RaRand)
+# Fit candidate model set
+RaWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = "absolute", refday = c(01, 07),
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(RaWin, file = paste0(modeldir, "RaWin.Rdata"))
+rm(RaWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+RaRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = "absolute", refday = c(01, 07),
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(RaRand, file = paste0(modeldir, "RaRand.Rdata"))
+rm(RaRand)
 # gc()
 ```
 
@@ -560,7 +567,7 @@ for (i in 1:(length(RaWin)-1)) {
                         func = func,
                         spatial = list(df$place_id, daily$place_id))
   
-  png(paste0(figureldir, "climwin_Ra_", RaWin$combos$climate[i], ".png"), width = 32 , height = 22, 
+  png(paste0(figuredir, "climwin_Ra_", RaWin$combos$climate[i], ".png"), width = 32 , height = 22, 
       units = "cm", res = 300)
   plotall(dataset = RaOutput,
           datasetrand = RaRand_data,
@@ -578,38 +585,38 @@ Candidate model fitting
 # Null model with no climate signal
 baseline <- lm(W ~ 1, data = df)
 
-# # Fit candidate model set
-# WWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = "absolute", refday = c(01, 07),
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(WWin, file = paste0(modeldir, "WWin.Rdata"))
-# rm(WWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# WRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = "absolute", refday = c(01, 07),
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(WRand, file = paste0(modeldir, "WRand.Rdata"))
-# rm(WRand)
-# gc()
+# Fit candidate model set
+WWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = "absolute", refday = c(01, 07),
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(WWin, file = paste0(modeldir, "WWin.Rdata"))
+rm(WWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+WRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = "absolute", refday = c(01, 07),
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(WRand, file = paste0(modeldir, "WRand.Rdata"))
+rm(WRand)
+gc()
 ```
 
 Model diagnostics
@@ -702,38 +709,38 @@ Candidate model fitting
 # Null model with no climate signal
 baseline <- lm(BMI ~ 1, data = df)
 
-# # Fit candidate model set
-# BMIWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = "absolute", refday = c(01, 07),
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(BMIWin, file = paste0(modeldir, "BMIWin.Rdata"))
-# rm(BMIWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# BMIRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = "absolute", refday = c(01, 07),
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(BMIRand, file = paste0(modeldir, "BMIRand.Rdata"))
-# rm(BMIRand)
-# gc()
+# Fit candidate model set
+BMIWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = "absolute", refday = c(01, 07),
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(BMIWin, file = paste0(modeldir, "BMIWin.Rdata"))
+rm(BMIWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+BMIRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = "absolute", refday = c(01, 07),
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(BMIRand, file = paste0(modeldir, "BMIRand.Rdata"))
+rm(BMIRand)
+gc()
 ```
 
 Model diagnostics
@@ -819,5 +826,385 @@ for (i in 1:(length(BMIWin)-1)) {
 }
 ```
 
+## Ra ~ Precipitation
+
+```{r}
+# Set priors
+# List of dependent variable candidates
+xvar <- list(Prcp = daily$Prcp)
+```
+
+
+Candidate model fitting
+```{r, message=FALSE, warning=FALSE}
+# Null model with no climate signal
+baseline <- lm(Ra ~ 1, data = df)
+
+# Fit candidate model set
+RaWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = "absolute", refday = c(01, 07),
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(RaWin, file = paste0(modeldir, "RaWin_Prcp.Rdata"))
+rm(RaWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+RaRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = "absolute", refday = c(01, 07),
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(RaRand, file = paste0(modeldir, "RaRand_Prcp.Rdata"))
+rm(RaRand)
+# gc()
+```
+
+Model diagnostics
+```{r}
+load(file = paste0(modeldir, "RaWin_Prcp.Rdata"))
+# Possible combinations of model parameters
+RaWin$combos
+```
+
+```{r}
+# Plot residuals against fitted values to check dependency function
+# (linear, quadratic, cubic, etc.)
+p_res_fit <- list()
+
+for (i in 1:(length(RaWin)-1)) {
+  bestmod <- RaWin[[i]]$BestModel
+
+  # Create residuals vs fitted plot
+  p_res_fit[[i]] <- ggplot(bestmod, aes(x = .fitted, y = .resid)) +
+    geom_point(alpha = 0.5) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_smooth() +
+    labs(title = "Residuals vs. Fitted Plot for the best model candidate",
+         x = "Fitted Values",
+         y = "Residuals")
+  
+}
+
+for (i in 1:length(p_res_fit)) {
+  plot(p_res_fit[[i]])
+}
+```
+
+```{r}
+# Estimate how likely our observed result would be at random
+load(file = paste0(modeldir, "RaRand_Prcp.Rdata"))
+
+pvalues <- list()
+
+for (i in 1:(length(RaRand)-1)) {
+  pvalues[[i]] <- pvalue(dataset = RaWin[[i]]$Dataset,
+                                   datasetrand = RaRand[[i]],
+                                   metric = metric,
+                                   sample.size = sample.size)
+  
+  print(pvalues[[i]])
+}
+```
+
+```{r}
+# Plot all diagnostic plots for a given parameter combination
+
+# Null model with no climate signal
+baseline <- lm(Ra ~ 1, data = df)
+
+plotalls <- list()
+
+for (i in 1:(length(RaWin)-1)) {
+  RaOutput <- RaWin[[i]]$Dataset
+  RaRand_data <- RaRand[[i]]
+  WindowOpen <- RaWin[[i]]$Dataset[1, 2]
+  WindowClose <- RaWin[[i]]$Dataset[1, 3]
+  
+  
+  # Fit single best model
+  RaSingle <- singlewin(xvar = xvar[i],
+                        cdate = cdate,
+                        bdate = bdate,
+                        baseline = baseline,
+                        cinterval = cinterval,
+                        range = c(WindowOpen, WindowClose),
+                        type = "absolute", refday = c(01, 07),
+                        stat = stat,
+                        func = func,
+                        spatial = list(df$place_id, daily$place_id))
+  
+  png(paste0(figuredir, "climwin_Ra_Prcp_", RaWin$combos$climate[i], ".png"), width = 32 , height = 22, 
+      units = "cm", res = 300)
+  plotall(dataset = RaOutput,
+          datasetrand = RaRand_data,
+          bestmodel = RaSingle$BestModel,
+          bestmodeldata = RaSingle$BestModelData)
+  dev.off()
+}
+```
+
+
+## W ~ Precipitation
+
+Candidate model fitting
+```{r, message=FALSE, warning=FALSE}
+# Null model with no climate signal
+baseline <- lm(W ~ 1, data = df)
+
+# Fit candidate model set
+WWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = "absolute", refday = c(01, 07),
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(WWin, file = paste0(modeldir, "WWin_Prcp.Rdata"))
+rm(WWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+WRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = "absolute", refday = c(01, 07),
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(WRand, file = paste0(modeldir, "WRand_Prcp.Rdata"))
+rm(WRand)
+gc()
+```
+
+Model diagnostics
+```{r}
+load(file = paste0(modeldir, "WWin_Prcp.Rdata"))
+# Possible combinations of model parameters
+WWin$combos
+```
+
+```{r}
+# Plot residuals against fitted values to check dependency function
+# (linear, quadratic, cubic, etc.)
+p_res_fit <- list()
+
+for (i in 1:(length(WWin)-1)) {
+  bestmod <- WWin[[i]]$BestModel
+
+  # Create residuals vs fitted plot
+  p_res_fit[[i]] <- ggplot(bestmod, aes(x = .fitted, y = .resid)) +
+    geom_point(alpha = 0.5) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_smooth() +
+    labs(title = "Residuals vs. Fitted Plot for the best model candidate",
+         x = "Fitted Values",
+         y = "Residuals")
+  
+}
+
+for (i in 1:length(p_res_fit)) {
+  plot(p_res_fit[[i]])
+}
+```
+
+```{r}
+# Estimate how likely our observed result would be at random
+load(file = paste0(modeldir, "WRand_Prcp.Rdata"))
+
+pvalues <- list()
+
+for (i in 1:(length(WRand)-1)) {
+  pvalues[[i]] <- pvalue(dataset = WWin[[i]]$Dataset,
+                                   datasetrand = WRand[[i]],
+                                   metric = metric,
+                                   sample.size = sample.size)
+  
+  print(pvalues[[i]])
+}
+```
+
+```{r}
+# Plot all diagnostic plots for a given parameter combination
+# Null model with no climate signal
+baseline <- lm(Ra ~ 1, data = df)
+
+plotalls <- list()
+
+for (i in 1:(length(WWin)-1)) {
+  RaOutput <- WWin[[i]]$Dataset
+  WRand_data <- WRand[[i]]
+  WindowOpen <- WWin[[i]]$Dataset[1, 2]
+  WindowClose <- WWin[[i]]$Dataset[1, 3]
+  
+  
+  # Fit single best model
+  RaSingle <- singlewin(xvar = xvar[i],
+                        cdate = cdate,
+                        bdate = bdate,
+                        baseline = baseline,
+                        cinterval = cinterval,
+                        range = c(WindowOpen, WindowClose),
+                        type = "absolute", refday = c(01, 07),
+                        stat = stat,
+                        func = func,
+                        spatial = list(df$place_id, daily$place_id))
+  
+  png(paste0(figuredir, "climwin_W_Prcp_", WWin$combos$climate[i], ".png"), width = 32 , height = 22, 
+      units = "cm", res = 300)
+  plotall(dataset = RaOutput,
+          datasetrand = WRand_data,
+          bestmodel = RaSingle$BestModel,
+          bestmodeldata = RaSingle$BestModelData)
+  dev.off()
+}
+```
+
+## BMI ~ Precipitation
+
+Candidate model fitting
+```{r, message=FALSE, warning=FALSE}
+# Null model with no climate signal
+baseline <- lm(BMI ~ 1, data = df)
+
+# Fit candidate model set
+BMIWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = "absolute", refday = c(01, 07),
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(BMIWin, file = paste0(modeldir, "BMIWin_Prcp.Rdata"))
+rm(BMIWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+BMIRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = "absolute", refday = c(01, 07),
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(BMIRand, file = paste0(modeldir, "BMIRand_Prcp.Rdata"))
+rm(BMIRand)
+gc()
+```
+
+Model diagnostics
+```{r}
+load(file = paste0(modeldir, "BMIWin_Prcp.Rdata"))
+# Possible combinations of model parameters
+BMIWin$combos
+```
+
+```{r}
+# Plot residuals against fitted values to check dependency function
+# (linear, quadratic, cubic, etc.)
+p_res_fit <- list()
+
+for (i in 1:(length(BMIWin)-1)) {
+  bestmod <- BMIWin[[i]]$BestModel
+
+  # Create residuals vs fitted plot
+  p_res_fit[[i]] <- ggplot(bestmod, aes(x = .fitted, y = .resid)) +
+    geom_point(alpha = 0.5) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_smooth() +
+    labs(title = "Residuals vs. Fitted Plot for the best model candidate",
+         x = "Fitted Values",
+         y = "Residuals")
+  
+}
+
+for (i in 1:length(p_res_fit)) {
+  plot(p_res_fit[[i]])
+}
+```
+
+```{r}
+# Estimate how likely our observed result would be at random
+load(file = paste0(modeldir, "BMIRand_Prcp.Rdata"))
+
+pvalues <- list()
+
+for (i in 1:(length(BMIRand)-1)) {
+  pvalues[[i]] <- pvalue(dataset = BMIWin[[i]]$Dataset,
+                                   datasetrand = BMIRand[[i]],
+                                   metric = metric,
+                                   sample.size = sample.size)
+  
+  print(pvalues[[i]])
+}
+```
+
+```{r}
+# Plot all diagnostic plots for a given parameter combination
+# Null model with no climate signal
+baseline <- lm(Ra ~ 1, data = df)
+
+plotalls <- list()
+
+for (i in 1:(length(BMIWin)-1)) {
+  RaOutput <- BMIWin[[i]]$Dataset
+  BMIRand_data <- BMIRand[[i]]
+  WindowOpen <- BMIWin[[i]]$Dataset[1, 2]
+  WindowClose <- BMIWin[[i]]$Dataset[1, 3]
+  
+  
+  # Fit single best model
+  RaSingle <- singlewin(xvar = xvar[i],
+                        cdate = cdate,
+                        bdate = bdate,
+                        baseline = baseline,
+                        cinterval = cinterval,
+                        range = c(WindowOpen, WindowClose),
+                        type = "absolute", refday = c(01, 07),
+                        stat = stat,
+                        func = func,
+                        spatial = list(df$place_id, daily$place_id))
+  
+  png(paste0(figuredir, "climwin_BMI_Prcp_", BMIWin$combos$climate[i], ".png"), width = 32 , height = 22, 
+      units = "cm", res = 300)
+  plotall(dataset = RaOutput,
+          datasetrand = BMIRand_data,
+          bestmodel = RaSingle$BestModel,
+          bestmodeldata = RaSingle$BestModelData)
+  dev.off()
+}
+```
 
 # End of script
