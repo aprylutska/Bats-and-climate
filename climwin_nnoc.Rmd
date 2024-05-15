@@ -33,8 +33,8 @@ mytheme <- theme_bw() +
 theme_set(mytheme)
 
 # Set model and figure directories
-modeldir <- "./models_200rep_23w_relW_nnoc/"
-figuredir <- "./figures_200rep_23w_relW_nnoc/"
+modeldir <- "./models_200rep_23w_absW_nnoc/"
+figuredir <- "./figures_200rep_23w_absW_nnoc/"
 
 # if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
 # To fix that, you need to re-map locate into US (will be back after restart R session)
@@ -476,7 +476,7 @@ baseline <- lm(Ra ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
+# Fit candidate model set
 # RaWin <- slidingwin(xvar = xvar,
 #                     cdate = daily$date,
 #                     bdate = df$date,
@@ -621,38 +621,38 @@ baseline <- lm(W ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
-# WWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(WWin, file = paste0(modeldir, "WWin.Rdata"))
-# rm(WWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# WRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(WRand, file = paste0(modeldir, "WRand.Rdata"))
-# rm(WRand)
-# gc()
+# Fit candidate model set
+WWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(WWin, file = paste0(modeldir, "WWin.Rdata"))
+rm(WWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+WRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(WRand, file = paste0(modeldir, "WRand.Rdata"))
+rm(WRand)
+gc()
 ```
 
 Model diagnostics
@@ -764,38 +764,38 @@ baseline <- lm(BMI ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
-# BMIWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(BMIWin, file = paste0(modeldir, "BMIWin.Rdata"))
-# rm(BMIWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# BMIRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(BMIRand, file = paste0(modeldir, "BMIRand.Rdata"))
-# rm(BMIRand)
-# gc()
+# Fit candidate model set
+BMIWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(BMIWin, file = paste0(modeldir, "BMIWin.Rdata"))
+rm(BMIWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+BMIRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(BMIRand, file = paste0(modeldir, "BMIRand.Rdata"))
+rm(BMIRand)
+gc()
 ```
 
 Model diagnostics
@@ -916,38 +916,38 @@ baseline <- lm(Ra ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
-# RaWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(RaWin, file = paste0(modeldir, "RaWin_Prcp.Rdata"))
-# rm(RaWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# RaRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(RaRand, file = paste0(modeldir, "RaRand_Prcp.Rdata"))
-# rm(RaRand)
-# gc()
+# Fit candidate model set
+RaWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(RaWin, file = paste0(modeldir, "RaWin_Prcp.Rdata"))
+rm(RaWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+RaRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(RaRand, file = paste0(modeldir, "RaRand_Prcp.Rdata"))
+rm(RaRand)
+gc()
 ```
 
 Model diagnostics
@@ -1065,38 +1065,38 @@ baseline <- lm(W ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
-# WWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(WWin, file = paste0(modeldir, "WWin_Prcp.Rdata"))
-# rm(WWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# WRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(WRand, file = paste0(modeldir, "WRand_Prcp.Rdata"))
-# rm(WRand)
-# gc()
+# Fit candidate model set
+WWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(WWin, file = paste0(modeldir, "WWin_Prcp.Rdata"))
+rm(WWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+WRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(WRand, file = paste0(modeldir, "WRand_Prcp.Rdata"))
+rm(WRand)
+gc()
 ```
 
 Model diagnostics
@@ -1210,38 +1210,38 @@ baseline <- lm(BMI ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
-# BMIWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(BMIWin, file = paste0(modeldir, "BMIWin_Prcp.Rdata"))
-# rm(BMIWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# BMIRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(BMIRand, file = paste0(modeldir, "BMIRand_Prcp.Rdata"))
-# rm(BMIRand)
-# gc()
+# Fit candidate model set
+BMIWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(BMIWin, file = paste0(modeldir, "BMIWin_Prcp.Rdata"))
+rm(BMIWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+BMIRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(BMIRand, file = paste0(modeldir, "BMIRand_Prcp.Rdata"))
+rm(BMIRand)
+gc()
 ```
 
 Model diagnostics
