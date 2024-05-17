@@ -905,6 +905,8 @@ Currently only average daily precipitation (Prcp) available.
 # Set priors
 # List of dependent variable candidates
 xvar <- list(Prcp = daily$Prcp)
+
+stat <- "sum"
 ```
 
 ### Ra
