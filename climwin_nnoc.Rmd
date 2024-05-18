@@ -110,8 +110,8 @@ ggplot(data = df, aes(Ra, W
   geom_point(alpha = 0.5) + 
   geom_smooth(method = "lm", aes(fill = Year)) +
   # geom_smooth(aes(fill = Year)) + 
-  labs(x = "Forearm length, mm",
-       y = "Weight, g")
+  labs(x = "Forearm length (mm)",
+       y = "Weight (g)")
 ```
 
 Bats with bigger forearm (Ra) have higher mass (W), and vice versa, regardless of year of capture.
@@ -166,7 +166,7 @@ p1 <- ggplot(data = df, aes(sex, Ra)) +
        # Welch Two Sample t-test
        subtitle = paste0("t = ",  round(Ra_t$statistic, digits = 3), 
                          " p = ", round(Ra_t$p.value, digits = 3)),
-       y = "Forearm length, mm")
+       y = "Forearm length (mm)")
 
 p2 <- ggplot(data = df, aes(sex, W)) +
   geom_violin() + 
@@ -177,7 +177,7 @@ p2 <- ggplot(data = df, aes(sex, W)) +
        # Welch Two Sample t-test
        subtitle = paste0("t = ",  round(W_t$statistic, digits = 3), 
                          " p = ", round(W_t$p.value, digits = 3)),
-       y = "Weight, g")
+       y = "Weight (g)")
 
 
 gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
@@ -195,14 +195,14 @@ p1 <- ggplot(data = df, aes(x = Year, y = Ra)) +
   geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = F) +
   geom_point(aes(colour = sex), alpha = 0.5) +
   labs(title = "a) Forearm length",
-       y = "Forearm length, mm")
+       y = "Forearm length (mm)")
 
 p2 <- ggplot(data = df, aes(x = Year, y = W)) +
   geom_violin(aes(colour = sex)) + 
   geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = F) +
   geom_point(aes(colour = sex), alpha = 0.5) +
   labs(title = "b) Weight",
-       y = "Weight, g")
+       y = "Weight (g)")
 
 gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
 
@@ -223,7 +223,7 @@ p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
   geom_smooth(method = "lm", aes(fill = Year)) + 
   labs(title = "Ra ~ DOY",
        x = "Day of the year",
-       y = "Forearm length, mm")
+       y = "Forearm length (mm)")
 
 # t ~ W
 p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
@@ -231,7 +231,7 @@ p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
   geom_smooth(method = "lm", aes(fill = Year)) +
   labs(title = "W ~ DOY",
        x = "Day of the year",
-       y = "Weight, g")
+       y = "Weight (g)")
 
 
 gridExtra::grid.arrange(p_Ra_day_4years, p_W_day_4years, nrow=1, ncol=2)
@@ -248,7 +248,7 @@ ggplot(data = df, aes(x = day, y = Ra, colour = sex)) +
   geom_smooth(method = "lm", aes(fill = sex)) + 
   labs(title = "Ra ~ DOY",
        x = "Day of the year",
-       y = "Forearm length, mm") +
+       y = "Forearm length (mm)") +
   facet_wrap(vars(Year), scales = "fixed")
 ```
 
@@ -259,7 +259,7 @@ ggplot(data = df, aes(x = day, y = W, colour = sex)) +
   geom_smooth(method = "lm", aes(fill = sex)) + 
   labs(title = "W ~ DOY",
        x = "Day of the year",
-       y = "Weight, g") +
+       y = "Weight (g)") +
   facet_wrap(vars(Year), scales = "fixed")
 ```
 
@@ -402,6 +402,99 @@ df <- df %>%
   rownames_to_column(var = "bat_id")
 ```
 
+# Monthly climate
+Here we explore the relationship among bat forearm length, weight, and Body Mass Index and simplest possible aggregated climatic variables - average mean temperature, average minimal temperature, and precipitation. Time period for aggregation - one calendar month.
+
+```{r, warning=FALSE}
+daily %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  mutate(Year = as.factor(lubridate::year(date))) %>% 
+  group_by(place_id, Year, month) %>% 
+  summarise(sum(Prcp), mean(Tmean), mean(Tmin)) %>% 
+  rename(Prcp = 4, Tmean = 5, Tmin = 6) -> aggregated_clim
+
+df %>% 
+  select(Territory, place_id, Year, Ra, W, BMI) %>% 
+  left_join(aggregated_clim) -> monthly_clim
+rm(aggregated_clim)
+```
+
+## Ra
+```{r}
+# Ra
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Tmean, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Tmin, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Prcp, y = Ra)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+```
+
+## W
+```{r}
+# W
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Tmean, y = W)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Tmin, y = W)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Prcp, y = W)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+```
+
+## BMI
+```{r}
+# BMI
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Tmean, y = BMI)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Tmin, y = BMI)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+
+monthly_clim %>% 
+  filter(month %in% c(1:6)) %>%
+  ggplot(aes(x = Prcp, y = BMI)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free")
+```
+
+
 
 # Climwin
 
@@ -460,7 +553,7 @@ sample.size = nlevels(as.factor(as.vector(df$Year)))
 ```
 
 ## Temperature
-Here we explore two temperature predictors: Mean  (Tmean) and Minimal (Tmin) daily temperatures, averaged across time window.
+Here we explore two temperature predictors: Mean (Tmean) and Minimal (Tmin) daily temperatures, averaged across time window.
 
 ```{r}
 # Set priors
