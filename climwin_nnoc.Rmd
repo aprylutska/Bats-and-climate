@@ -36,6 +36,9 @@ theme_set(mytheme)
 modeldir <- "./models_200rep_23w_absW_nnoc/"
 figuredir <- "./figures_200rep_23w_absW_nnoc/"
 
+# Lower threshold for the number of bats captured in a night
+threshold <- 1
+
 # if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
 # To fix that, you need to re-map locate into US (will be back after restart R session)
 
@@ -73,14 +76,14 @@ df <- read.csv("./data/Inventory_all_years_2024-04-04_OP.csv") %>%
 sessionInfo() # to check your locale
 ```
 
-Since we have nights ("days") with very few bats captured, we decided to drop the nights with less then 5 bats.
+Since we have nights ("days") with very few bats captured, we decided to drop the nights with lesser bats captured than the threshold.
 
 ```{r, echo=FALSE, message=FALSE}
 df <- df %>%
   # count bats per day
   count(date) %>%
   # choose days where more than 10 bats
-  filter(n >= 1) %>%
+  filter(n >= threshold) %>%
   # subset with days where more than 10 bats
   inner_join(df, by = join_by(date)) %>%
   filter(Territory != "Smolensk" &
@@ -100,8 +103,36 @@ ggplot(df, aes(x = day, fill = Territory)) +
 
 
 # Exploration of the dynamics of growth metrics 
-How Ra related to W?
+What the statistical distribution of response variables?
+```{r}
+# Ra
+p_dist_Ra <- ggplot(df, aes(x = Ra)) +
+  geom_density(fill = "blue", alpha = .5) +
+  labs(title = "Shapiro-Wilk normality test",
+       subtitle = paste0("W = ", round(shapiro.test(df$Ra)$statistic, 
+                                       digits = 2), 
+                         ", p-value = ", round(shapiro.test(df$Ra)$p.value, 
+                                               digits = 4)
+                         )
+       )
 
+# W
+p_dist_W <- ggplot(df, aes(x = W)) +
+  geom_density(fill = "red", alpha = .5) +
+  labs(title = "Shapiro-Wilk normality test",
+     subtitle = paste0("W = ", round(shapiro.test(df$W)$statistic, 
+                                     digits = 2), 
+                       ", p-value = ", round(shapiro.test(df$W)$p.value, 
+                                             digits = 4)
+                       )
+     )
+
+gridExtra::grid.arrange(p_dist_Ra, p_dist_W, nrow=1, ncol=2)
+rm(p_dist_W, p_dist_Ra)
+```
+Distribution in both response variables derives from normality.
+
+How Ra related to W?
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
 ggplot(data = df, aes(Ra, W
                       , colour = Year
@@ -195,14 +226,20 @@ p1 <- ggplot(data = df, aes(x = Year, y = Ra)) +
   geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = F) +
   geom_point(aes(colour = sex), alpha = 0.5) +
   labs(title = "a) Forearm length",
-       y = "Forearm length (mm)")
+       y = "Forearm length (mm)",
+       fill = NULL,
+       colour = NULL) +
+  theme(legend.position = c(.2, .1))
 
 p2 <- ggplot(data = df, aes(x = Year, y = W)) +
   geom_violin(aes(colour = sex)) + 
   geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = F) +
   geom_point(aes(colour = sex), alpha = 0.5) +
   labs(title = "b) Weight",
-       y = "Weight (g)")
+       y = "Weight (g)",
+       fill = NULL,
+       colour = NULL) +
+  theme(legend.position = c(.2, .1))
 
 gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
 
@@ -223,7 +260,10 @@ p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
   geom_smooth(method = "lm", aes(fill = Year)) + 
   labs(title = "Ra ~ DOY",
        x = "Day of the year",
-       y = "Forearm length (mm)")
+       y = "Forearm length (mm)",
+       fill = NULL,
+       colour = NULL) +
+  theme(legend.position = "bottom")
 
 # t ~ W
 p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
@@ -231,7 +271,10 @@ p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
   geom_smooth(method = "lm", aes(fill = Year)) +
   labs(title = "W ~ DOY",
        x = "Day of the year",
-       y = "Weight (g)")
+       y = "Weight (g)",
+       fill = NULL,
+       colour = NULL) +
+  theme(legend.position = "bottom")
 
 
 gridExtra::grid.arrange(p_Ra_day_4years, p_W_day_4years, nrow=1, ncol=2)
@@ -244,7 +287,7 @@ Does some sex-dependent differences exist?
 ```{r}
 # t ~ Ra
 ggplot(data = df, aes(x = day, y = Ra, colour = sex)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm", aes(fill = sex)) + 
   labs(title = "Ra ~ DOY",
        x = "Day of the year",
@@ -255,7 +298,7 @@ ggplot(data = df, aes(x = day, y = Ra, colour = sex)) +
 ```{r}
 # t ~ W
 ggplot(data = df, aes(x = day, y = W, colour = sex)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm", aes(fill = sex)) + 
   labs(title = "W ~ DOY",
        x = "Day of the year",
@@ -403,7 +446,7 @@ df <- df %>%
 ```
 
 # Monthly climate
-Here we explore the relationship among bat forearm length, weight, and Body Mass Index and simplest possible aggregated climatic variables - average mean temperature, average minimal temperature, and precipitation. Time period for aggregation - one calendar month.
+Here we explore the relationship among bat forearm length, weight, and Body Mass Index and simplest possible aggregated climatic variables - average mean temperature, average minimal temperature, and cumulative precipitation. Time period for aggregation - one calendar month.
 
 ```{r, warning=FALSE}
 daily %>% 
@@ -425,22 +468,28 @@ rm(aggregated_clim)
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmean, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
+  geom_point(shape = 1) +
+  # geom_smooth(method = "lm") +
+  # geom_smooth() +
+  stat_smooth(method = glm) +
   facet_wrap(vars(month), scales = "free")
 
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmin, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
+  geom_point(shape = 1) +
+  # geom_smooth(method = "lm") +
+  # geom_smooth() +
+  stat_smooth(method = glm) +
   facet_wrap(vars(month), scales = "free")
 
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Prcp, y = Ra)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
+  geom_point(shape = 1) +
+  # geom_smooth(method = "lm") +
+  # geom_smooth() +
+  stat_smooth(method = glm) +
   facet_wrap(vars(month), scales = "free")
 ```
 
@@ -450,21 +499,21 @@ monthly_clim %>%
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmean, y = W)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
 
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmin, y = W)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
 
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Prcp, y = W)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
 ```
@@ -475,21 +524,21 @@ monthly_clim %>%
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmean, y = BMI)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
 
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmin, y = BMI)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
 
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Prcp, y = BMI)) +
-  geom_point() +
+  geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
 ```

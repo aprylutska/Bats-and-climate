@@ -44,7 +44,7 @@ check_my_var <- function(data, dependent_var, independent_var, years) {
   }
   
   p <- ggplot(data = data, aes_string(x = independent_var, y = dependent_var)) +
-    geom_point() +
+    geom_point(shape = 1) +
     geom_smooth(method = "lm") +
     facet_wrap(vars(Year))
   
