@@ -91,8 +91,11 @@ df <- df %>%
   filter(Territory != "Chornobyl") %>%
   # filter(Territory == "Homilsha") %>% 
   select(-n)
+```
 
-# Check how many bats we captured during the night
+# Exploratory analysis
+Check how many bats we captured during the night, per territory.
+```{r, echo=FALSE, message=FALSE}
 ggplot(df, aes(x = day, fill = Territory)) +
   geom_histogram() +
   labs(x = "Day of the year",
@@ -100,11 +103,11 @@ ggplot(df, aes(x = day, fill = Territory)) +
   facet_wrap(vars(Year))
 ```
 
+## Growth metrics distribution
+For each bat captured, we measured two growth-related numerical variables - forearm length (Ra, mm), and weight (W, g).
 
-
-# Exploration of the dynamics of growth metrics 
 What the statistical distribution of response variables?
-```{r}
+```{r, echo=FALSE}
 # Ra
 p_dist_Ra <- ggplot(df, aes(x = Ra)) +
   geom_density(fill = "blue", alpha = .5) +
@@ -130,7 +133,7 @@ p_dist_W <- ggplot(df, aes(x = W)) +
 gridExtra::grid.arrange(p_dist_Ra, p_dist_W, nrow=1, ncol=2)
 rm(p_dist_W, p_dist_Ra)
 ```
-Distribution in both response variables derives from normality.
+Distribution in both response variables diviate from normality.
 
 How Ra related to W?
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
@@ -145,10 +148,11 @@ ggplot(data = df, aes(Ra, W
        y = "Weight (g)")
 ```
 
-Bats with bigger forearm (Ra) have higher mass (W), and vice versa, regardless of year of capture.
+Bats with bigger forearm (Ra) have higher mass (W), and vice versa. Atthe same time, there is a visible differences among years.
 
+## Sex dependency
 Is there any sex differences in growth metrics? Is that possible that male and female bats growth different?
-```{r}
+```{r, echo=FALSE}
 # Ra
 shapiro.test(df$Ra)
 
@@ -183,13 +187,12 @@ W_t <- t.test(W ~ sex, df)
 # Mann-Whitney (Wilcoxon) test
 W_wilk <- wilcox.test(W ~ sex, data = df)
 ```
-
-
-Wilcoxon rank sum test with continuity correction
+To select a method for assessing sex dependent variance, we first checked homogeneity of variances and normality. Bartlett test indicated good homogeneity for both Ra and W, but Shapiro-Wilk test indicated deviation from normality. On the other hand, visual exploration suggest highly symmetrical distribution. Thus, we tested differences between male and female bats using t-test:
 
 ```{r, echo=FALSE}
 p1 <- ggplot(data = df, aes(sex, Ra)) +
-  geom_violin() + 
+  geom_violin(aes(colour = sex)) + 
+  geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = T) +
   labs(title = "Forearm length",
        # # Wilcoxon rank sum test with continuity correction
        # subtitle = paste0("W = ",  round(Ra_wilk$statistic, digits = 3), 
@@ -197,18 +200,29 @@ p1 <- ggplot(data = df, aes(sex, Ra)) +
        # Welch Two Sample t-test
        subtitle = paste0("t = ",  round(Ra_t$statistic, digits = 3), 
                          " p = ", round(Ra_t$p.value, digits = 3)),
-       y = "Forearm length (mm)")
+       x = "",
+       y = "Forearm length (mm)",
+       caption = paste0("n(f) = ", nrow(df[df$sex == "female",]),
+                        ", n(m) = ", nrow(df[df$sex == "male",])
+                        )
+       )
 
 p2 <- ggplot(data = df, aes(sex, W)) +
-  geom_violin() + 
+  geom_violin(aes(colour = sex)) + 
+  geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = T) +
   labs(title = "Weight",
        # # Wilcoxon rank sum test with continuity correction
        # subtitle = paste0("W = ",  round(W_wilk$statistic, digits = 3), 
        #                   " p = ", round(W_wilk$p.value, digits = 3)),
        # Welch Two Sample t-test
-       subtitle = paste0("t = ",  round(W_t$statistic, digits = 3), 
-                         " p = ", round(W_t$p.value, digits = 3)),
-       y = "Weight (g)")
+       subtitle = paste0("t = ",  round(W_t$statistic, digits = 4), 
+                         " p = ", round(W_t$p.value, digits = 4)),
+       x = "",
+       y = "Weight (g)",
+       caption = paste0("n(f) = ", nrow(df[df$sex == "female",]),
+                        ", n(m) = ", nrow(df[df$sex == "male",])
+                        )
+       )
 
 
 gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
@@ -216,11 +230,11 @@ gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
 rm(Ra_t, Ra_wilk, W_t, W_wilk)
 ```
 
-Ra might appeared to be sex-dependent, Weight did  not show such pattern.
+Ra appeared to be sex-dependent, Weight did not show such pattern.
 
-Does Ra or W seem to be different among years?
+To reveal possible interactions with sex, we then took a look at the sex-dependent variation of Ra/W across the years of sampling.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE}
 p1 <- ggplot(data = df, aes(x = Year, y = Ra)) +
   geom_violin(aes(colour = sex)) + 
   geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = F) +
@@ -246,18 +260,18 @@ gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
 rm(p1, p2)
 ```
 
-In our data set, Ra seems to be constant across the years of survey. Contrary, W tends to vary among years. Both are possibly sex-dependent.
+In our data set, male/female ration in Ra seemed to be constant across the years of survey - male young bats had always smaller arm than female ones. Contrary, W did not show a constant pattern across the year.
 
 Therefore, to test our hypothesis about spring weather effect on bat growth, we must fit models that include sex as either nominative explanatory variables with interactions or random effect.
 
-
-Does Ra or W changes over the inventory time?
+## Changes over the inventory time
+Bat survey (inventory) lasted approximately two weeks in July, after all of the juveniles turn to be able to fly. Therefore, we can expect some directed changes in bat body measures over this period. We tested the relations between growth metrics (Ra and W) and day-of-the-year, controlling different years.
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
 # t ~ Ra
 p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(fill = Year)) + 
+  geom_point(shape = 1, alpha = 0.8) +
+  geom_smooth(method = "lm", aes(fill = Year), linewidth = .5) + 
   labs(title = "Ra ~ DOY",
        x = "Day of the year",
        y = "Forearm length (mm)",
@@ -267,8 +281,8 @@ p_Ra_day_4years <- ggplot(data = df, aes(x = day, y = Ra, colour = Year)) +
 
 # t ~ W
 p_W_day_4years <- ggplot(data = df, aes(x = day, y = W, colour = Year)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(fill = Year)) +
+  geom_point(shape = 1, alpha = 0.8) +
+  geom_smooth(method = "lm", aes(fill = Year), linewidth = .5) +
   labs(title = "W ~ DOY",
        x = "Day of the year",
        y = "Weight (g)",
@@ -282,42 +296,46 @@ gridExtra::grid.arrange(p_Ra_day_4years, p_W_day_4years, nrow=1, ncol=2)
 rm(p_Ra_day_4years, p_W_day_4years)
 ```
 
-Does some sex-dependent differences exist?
+Ra did not seen to change over the survey period, whereas W constantly increased. If we compare study years, slopes of simple linear models slightly varies, as well as intercepts, but remains close to the horizontal (Ra seems to vary indifferently either year or capture date). By contrast, W shows constant slopes over the years, but differs  in intercepts. In other words, 
 
-```{r}
+- W does changes over the single survey period,
+- W steadily increased,
+- there are quantitative differences in average bat W across the years, but the way W changed over the survey period.
+
+We also check if some sex-dependent differences in W exist in each year.
+
+```{r, echo=FALSE, message=FALSE}
 # t ~ Ra
-ggplot(data = df, aes(x = day, y = Ra, colour = sex)) +
-  geom_point(shape = 1) +
-  geom_smooth(method = "lm", aes(fill = sex)) + 
-  labs(title = "Ra ~ DOY",
+p_Ra_doi <- ggplot(data = df, aes(x = day, y = Ra, colour = sex)) +
+  geom_point(shape = 1, alpha = 0.8) +
+  geom_smooth(method = "lm", aes(fill = sex), linewidth = .5) + 
+  labs(title = "a) Ra ~ DOY",
        x = "Day of the year",
        y = "Forearm length (mm)") +
-  facet_wrap(vars(Year), scales = "fixed")
-```
+  facet_wrap(vars(Year), scales = "fixed", ncol = 2) +
+  theme(legend.position = "bottom")
 
-```{r}
 # t ~ W
-ggplot(data = df, aes(x = day, y = W, colour = sex)) +
-  geom_point(shape = 1) +
-  geom_smooth(method = "lm", aes(fill = sex)) + 
-  labs(title = "W ~ DOY",
+p_W_doi <- ggplot(data = df, aes(x = day, y = W, colour = sex)) +
+  geom_point(shape = 1, alpha = 0.8) +
+  geom_smooth(method = "lm", aes(fill = sex), linewidth = .5) + 
+  labs(title = "b) W ~ DOY",
        x = "Day of the year",
        y = "Weight (g)") +
-  facet_wrap(vars(Year), scales = "fixed")
+  facet_wrap(vars(Year), scales = "fixed", ncol = 2) +
+  theme(legend.position = "bottom")
+
+gridExtra::grid.arrange(p_Ra_doi, p_W_doi, nrow=1, ncol=2)
+rm(p_Ra_doi, p_W_doi)
 ```
 
-# Check different growth metrics for variation during inventory time
-## Ra
-fit simple lm 
+To numerically check different growth metrics' variation during inventory time, we fit a simple linear models per years. 
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 check_my_var(df, "Ra", "day", years = "Year")
-
 ```
 
 Ra is weakly related to the time of capture. 
-
-## W
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 check_my_var(df, "W", "day", "Year")
@@ -325,15 +343,13 @@ check_my_var(df, "W", "day", "Year")
 
 W strongly related to the time of capture.
 
-As we can see, Ra remains constant over inventory period, and probably doesn't differ among years (need statistical testing, but gives a hint from the plot). Weight, instead, (i) differs among years, and (ii) grows over the inventory period.
+As we can see, Ra generally remains constant over survey period, and probably doesn't differ among years. Weight, instead, (i) differs among years, and (ii) grows over the survey period.
 
-In other words, bats captured later might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated series of synthetic growth metrics, and test their variation over the inventory period and between the years.
+In other words, bats captured later in a year might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated a synthetic, capture-time-independent growth metrics called Body Mass Index (BMI), and test its variation over the inventory period and between the years. For each bat capture event, BMI was calculated as the residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day).
 
+Log-transformation scales BMI from -1 to 1, which facilitates its interpretation. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
-## BMI (W~doy)
-Since weight seems to be growing during inventory timespan, we substituted raw weight (g) by the residuals of body mass-day of the year regression. Body Mass Index (BMI) calculated as residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day), for each bat individual.
-
-```{r}
+```{r, echo=FALSE}
 # Fit simple linear model (all years altogether)
 mod <- lm(log(W) ~ log(day), data = df)
 
@@ -344,75 +360,45 @@ df$BMI <- residuals(mod)
 rm(mod)
 ```
 
-That way we get scaled from -1 to 1, time independent measure of body condition. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
+Check BMI's sensitivity to day-of-the-year:
 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+p1 <- ggplot(data = df, aes(x = day, y = BMI)) +
+  geom_point(shape = 1, alpha = 0.8) +
+  geom_smooth(method = "lm", linewidth = .5) + 
+  labs(title = "a) BMI for all data",
+       x = "Day of the year",
+       y = "Body Mass Index")
 
-```{r}
-# # Fit simple linear models, but for each year separately, then merge the results
-# # Prepare custom function for Body Mass Index calculation
-# bmi_lm <- function(df){
-#   lm(log(W) ~ log(day), data = df)
-# }
-# 
-# # Nest df by Year and fit separate linear models for each year
-# df_nested <- df %>% 
-#   group_by(Year) %>% 
-#   nest() %>% 
-#   mutate(model = map(data, bmi_lm)) %>% 
-#   mutate(BMI = map(model, residuals))
-# 
-# # Unnest data and merge original data with newly calculated residuals
-# df_BMI <- df_nested %>% 
-#   unnest(BMI) %>% 
-#   select(-data, -model)
-# 
-# df <- df_nested %>% 
-#   unnest(data) %>% 
-#   select(-model, -BMI) %>% 
-#   bind_cols(df_BMI) %>% 
-#   rename(Year = `Year...1`) %>% 
-#   select(-`Year...10`)
-# 
-# rm(bmi_lm, df_nested, df_BMI)
+p2 <- ggplot(data = df, aes(x = day, y = BMI, colour = Year)) +
+  geom_point(shape = 1, alpha = 0.8) +
+  geom_smooth(method = "lm", aes(fill = Year), linewidth = .5) + 
+  labs(title = "b) BMI per year",
+       x = "Day of the year",
+       y = "Body Mass Index") +
+  theme(legend.position = c(.2, .22))
+
+gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
+rm(p1, p2)
 ```
 
+As we can see on the Figure above, BMI isn't sensitive to bat capture date within a survey period, but reflects differences among years.
 
-```{r, warning=FALSE, message=FALSE}
+```{r, echo=FALSE}
 check_my_var(df, "BMI", "day", "Year")
 ```
 
-BCI is weakly related to the time of caption, as it was expected from the method of calculation.
-
-BCI showed visual differences among years, suggesting bats grow differently depending on year-specific effects.
-
-```{r, echo=FALSE}
-ggplot(data = df, aes(Year, BMI)) +
-  geom_violin(aes(colour = sex), alpha = 0.3) + 
-  geom_boxplot(aes(fill = sex, colour = sex), alpha = 0.3, outliers = F) +
-  geom_point(aes(colour = sex), alpha = 0.5) +
-  labs(y = "Body Mass Index")
-```
-
-For Homilsha Forest inventory data, 2014 seems to have insufficient number of nights when 10 or more Noctule bat individuals were captured - possibly we should remove it from further analyses.
-
-```{r, message=FALSE}
-ggplot(data = df, aes(day, BMI, colour = Year)) +
-  geom_point(alpha = 0.5) + 
-  geom_smooth(method = "lm", aes(fill = Year)) + 
-  labs(x = "Day of the year",
-       y = "Body Mass Index")
-```
+Similarly, BMI shows no statistically significant dependency on capture date (day-of-the-year), even when we treat it for each year separately.
 
 Therefore, we choose to test two alternative response variables - forearm length (Ra) and Body Mass Index (BMI), as a possible growth metric in our research.
 
 # Generate weather data
-
-```{r}
-# Take a look at the timespan
-summary(df$date)
-```
+We downloaded daily weather data from ... using *easyclimate* package.
 
 ```{r eval=FALSE, echo=FALSE, message=FALSE}
+# # Take a look at the timespan
+# summary(df$date)
+
 # # Create data frame with point coordinates
 # coords <- read.csv("./data/coords.csv") %>%
 #   # Make a new variable with places' unique identifiers
@@ -439,7 +425,13 @@ summary(df$date)
 ```{r echo=FALSE}
 load(file = "./data/daily_weather_2007-2019.Rdata")
 daily <- daily %>% 
-  mutate(date = as.Date(date))
+  mutate(date = as.Date(date)) %>% 
+  # Aggregate climate data per territory/date
+  separate(place_id, c("Territory", "placeCode")) %>% 
+  select(-ID_coords, -placeCode) %>% 
+  group_by(Territory, date) %>% 
+  summarise(mean(Prcp), mean(Tmin), mean(Tmean)) %>% 
+  rename(Prcp = 3, Tmin = 4, Tmean = 5)
 
 df <- df %>% 
   rownames_to_column(var = "bat_id")
@@ -452,11 +444,13 @@ Here we explore the relationship among bat forearm length, weight, and Body Mass
 daily %>% 
   mutate(month = lubridate::month(date)) %>% 
   mutate(Year = as.factor(lubridate::year(date))) %>% 
-  group_by(place_id, Year, month) %>% 
+  # group_by(place_id, Year, month) %>% 
+  group_by(Territory, Year, month) %>% 
   summarise(sum(Prcp), mean(Tmean), mean(Tmin)) %>% 
   rename(Prcp = 4, Tmean = 5, Tmin = 6) -> aggregated_clim
 
 df %>% 
+  # select(Territory, place_id, Year, Ra, W, BMI) %>% 
   select(Territory, place_id, Year, Ra, W, BMI) %>% 
   left_join(aggregated_clim) -> monthly_clim
 rm(aggregated_clim)
@@ -584,6 +578,7 @@ cinterval <- "week"
 # if 'cinterval' set to "week"
 # range <- c(30, 0) # (~ 1 Dec)
 range <- c(23, 0) # ~ 15 Jan
+range <- c(13, 0) # ~ 1 Apr
 
 stat <- "mean"
 
