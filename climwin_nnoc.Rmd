@@ -33,8 +33,8 @@ mytheme <- theme_bw() +
 theme_set(mytheme)
 
 # Set model and figure directories
-modeldir <- "./models_200rep_23w_absW_nnoc/"
-figuredir <- "./figures_200rep_23w_absW_nnoc/"
+modeldir <- "./models_200rep_13w_absW_nnoc/"
+figuredir <- "./figures_200rep_13w_absW_nnoc/"
 
 # Lower threshold for the number of bats captured in a night
 threshold <- 1
@@ -390,7 +390,8 @@ check_my_var(df, "BMI", "day", "Year")
 
 Similarly, BMI shows no statistically significant dependency on capture date (day-of-the-year), even when we treat it for each year separately.
 
-Therefore, we choose to test two alternative response variables - forearm length (Ra) and Body Mass Index (BMI), as a possible growth metric in our research.
+Therefore, three alternative response variables - forearm length (Ra), body weight at capture moment (W), and Body Mass Index (BMI), can be treated differently as a possible growth metric.
+
 
 # Generate weather data
 We downloaded daily weather data from ... using *easyclimate* package.
@@ -437,10 +438,47 @@ df <- df %>%
   rownames_to_column(var = "bat_id")
 ```
 
+# Annual climate
+As we saw both W and BMI have different intercepts across years, we can first check how years of survey varied by climatic variables.
+
+```{r, echo=FALSE}
+daily %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  mutate(Year = as.factor(lubridate::year(date))) %>% 
+  filter(month %in% c(4:6)) %>%
+  filter(Territory %in% c("Homilsha") &
+           Year %in% c(2008, 2011, 2014, 2019) |
+           Territory == "Yaremivka" & 
+           Year == 2009) %>% 
+  ggplot(aes(x = Year, y = Tmean, colour = Territory)) +
+  geom_boxplot() +
+  labs(title = "Averaged Mean temperature for April-June",
+       y = "Mean Temperature (°C)")
+```
+
+Mean daily temperature of April-June interval, averaged across each year, seems not to vary tremendously across years. If we try to desiccate it per month, the differences among years appear.
+
+```{r, echo=FALSE}
+daily %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  mutate(Year = as.factor(lubridate::year(date))) %>% 
+  filter(month %in% c(4:6)) %>%
+  filter(Territory %in% c("Homilsha") &
+           Year %in% c(2008, 2011, 2014, 2019) |
+           Territory == "Yaremivka" & 
+           Year == 2009) %>% 
+  ggplot(aes(x = Year, y = Tmean, colour = Territory)) +
+  geom_boxplot() +
+  labs(title = "Averaged Mean temperature for April-June",
+       y = "Mean Temperature (°C)") +
+  facet_wrap(vars(month))
+```
+
+
 # Monthly climate
 Here we explore the relationship among bat forearm length, weight, and Body Mass Index and simplest possible aggregated climatic variables - average mean temperature, average minimal temperature, and cumulative precipitation. Time period for aggregation - one calendar month.
 
-```{r, warning=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 daily %>% 
   mutate(month = lubridate::month(date)) %>% 
   mutate(Year = as.factor(lubridate::year(date))) %>% 
@@ -456,87 +494,107 @@ df %>%
 rm(aggregated_clim)
 ```
 
-## Ra
+
+Ra
 ```{r}
 # Ra
 monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
+  filter(month %in% c(4:6)) %>%
   ggplot(aes(x = Tmean, y = Ra)) +
   geom_point(shape = 1) +
   # geom_smooth(method = "lm") +
   # geom_smooth() +
   stat_smooth(method = glm) +
-  facet_wrap(vars(month), scales = "free")
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Forearm length vs. Mean monthly temperature")
 
 monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
+  filter(month %in% c(4:6)) %>%
   ggplot(aes(x = Tmin, y = Ra)) +
   geom_point(shape = 1) +
   # geom_smooth(method = "lm") +
   # geom_smooth() +
   stat_smooth(method = glm) +
-  facet_wrap(vars(month), scales = "free")
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Forearm length vs. Minimal monthly temperature")
 
 monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
+  filter(month %in% c(4:6)) %>%
   ggplot(aes(x = Prcp, y = Ra)) +
   geom_point(shape = 1) +
   # geom_smooth(method = "lm") +
   # geom_smooth() +
   stat_smooth(method = glm) +
-  facet_wrap(vars(month), scales = "free")
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Forearm length vs. Cumulative monthly precipitation")
 ```
 
-## W
+W
 ```{r}
 # W
 monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
+  filter(month %in% c(4:6)) %>%
   ggplot(aes(x = Tmean, y = W)) +
   geom_point(shape = 1) +
   geom_smooth(method = "lm") +
-  facet_wrap(vars(month), scales = "free")
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Body weight vs. Mean monthly temperature")
 
 monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
+  filter(month %in% c(4:6)) %>%
   ggplot(aes(x = Tmin, y = W)) +
   geom_point(shape = 1) +
   geom_smooth(method = "lm") +
-  facet_wrap(vars(month), scales = "free")
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Body weight vs. Minimal monthly temperature")
 
 monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
+  filter(month %in% c(4:6)) %>%
   ggplot(aes(x = Prcp, y = W)) +
   geom_point(shape = 1) +
   geom_smooth(method = "lm") +
-  facet_wrap(vars(month), scales = "free")
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Body weight vs. Cumulative monthly precipitation")
 ```
 
-## BMI
+BMI
 ```{r}
 # BMI
+monthly_clim %>% 
+  filter(month %in% c(4:6)) %>%
+  ggplot(aes(x = Tmean, y = BMI)) +
+  geom_point(shape = 1) +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Body Mass Index vs. Mean monthly temperature")
+
+monthly_clim %>% 
+  filter(month %in% c(4:6)) %>%
+  ggplot(aes(x = Tmin, y = BMI)) +
+  geom_point(shape = 1) +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Body Mass Index vs. Minimal monthly temperature")
+
+monthly_clim %>% 
+  filter(month %in% c(4:6)) %>%
+  ggplot(aes(x = Prcp, y = BMI)) +
+  geom_point(shape = 1) +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(month), scales = "free") +
+  labs(title = "Body Mass Index vs. Cumulative monthly precipitation")
+```
+
+
+## Climate differences across years
+```{r}
 monthly_clim %>% 
   filter(month %in% c(1:6)) %>%
   ggplot(aes(x = Tmean, y = BMI)) +
   geom_point(shape = 1) +
   geom_smooth(method = "lm") +
   facet_wrap(vars(month), scales = "free")
-
-monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
-  ggplot(aes(x = Tmin, y = BMI)) +
-  geom_point(shape = 1) +
-  geom_smooth(method = "lm") +
-  facet_wrap(vars(month), scales = "free")
-
-monthly_clim %>% 
-  filter(month %in% c(1:6)) %>%
-  ggplot(aes(x = Prcp, y = BMI)) +
-  geom_point(shape = 1) +
-  geom_smooth(method = "lm") +
-  facet_wrap(vars(month), scales = "free")
 ```
-
 
 
 # Climwin
@@ -577,7 +635,7 @@ cinterval <- "week"
 
 # if 'cinterval' set to "week"
 # range <- c(30, 0) # (~ 1 Dec)
-range <- c(23, 0) # ~ 15 Jan
+# range <- c(23, 0) # ~ 15 Jan
 range <- c(13, 0) # ~ 1 Apr
 
 stat <- "mean"
@@ -585,12 +643,12 @@ stat <- "mean"
 func <- "lin"
 
 # number of repeats for randomization
-# repeats <- 5 # for metric = "C"
-repeats <- 200 # for metric = "AIC"
+repeats <- 5 # for metric = "C"
+# repeats <- 200 # for metric = "AIC"
 
 # Metrics for assessing
-# metric = "C"
-metric = "AIC"
+metric = "C"
+# metric = "AIC"
 
 # Number of years in data
 sample.size = nlevels(as.factor(as.vector(df$Year)))
@@ -607,44 +665,54 @@ xvar <- list(Tmean = daily$Tmean, Tmin = daily$Tmin)
 
 ### Ra
 ```{r}
-# Null model with no climate signal
-baseline <- lm(Ra ~ 1, data = df)
+# # Null model with no climate signal
+# baseline <- lm(Ra ~ 1, data = df)
+
+# Null model with interaction
+# Firstly, it is necessary to create a variable called ‘climate’ in the biological dataset.
+df$climate <- 1
+# Set baseline model
+baseline <- lm(Ra ~ climate*sex, data = df)
 ```
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
 # Fit candidate model set
-# RaWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(RaWin, file = paste0(modeldir, "RaWin.Rdata"))
-# rm(RaWin)
-# gc()
-# 
+RaWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    # spatial = list(df$place_id, daily$place_id)
+                    spatial = list(df$Territory, daily$Territory)
+                    )
+
+save(RaWin, file = paste0(modeldir, "RaWin.Rdata"))
+rm(RaWin)
+gc()
+
 # Fit randomized model set for evaluation purposes
-# RaRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(RaRand, file = paste0(modeldir, "RaRand.Rdata"))
-# rm(RaRand)
-# gc()
+RaRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  # spatial = list(df$place_id, daily$place_id)
+                  spatial = list(df$Territory, daily$Territory)
+                  )
+
+save(RaRand, file = paste0(modeldir, "RaRand.Rdata"))
+rm(RaRand)
+gc()
 ```
 
 Model diagnostics
@@ -737,7 +805,8 @@ for (i in 1:(length(RaWin)-1)) {
                         type = type, refday = refday,
                         stat = stat,
                         func = func,
-                        spatial = list(df$place_id, daily$place_id))
+                        # spatial = list(df$place_id, daily$place_id)
+                        spatial = list(df$Territory, daily$Territory))
   
   png(paste0(figuredir, "climwin_Ra_", RaWin$combos$climate[i], ".png"), width = 32 , height = 22, 
       units = "cm", res = 300)
@@ -747,6 +816,35 @@ for (i in 1:(length(RaWin)-1)) {
           bestmodeldata = RaSingle$BestModelData)
   dev.off()
 }
+```
+
+```{r}
+RaOutput <- RaWin[[1]]$Dataset
+  RaRand_data <- RaRand[[1]]
+  WindowOpen <- RaWin[[1]]$Dataset[1, 2]
+  WindowClose <- RaWin[[1]]$Dataset[1, 3]
+  
+  
+  # Fit single best model
+  RaSingle <- singlewin(xvar = xvar[1],
+                        cdate = cdate,
+                        bdate = bdate,
+                        baseline = baseline,
+                        cinterval = cinterval,
+                        range = c(WindowOpen, WindowClose),
+                        type = type, refday = refday,
+                        stat = stat,
+                        func = func,
+                        # spatial = list(df$place_id, daily$place_id)
+                        spatial = list(df$Territory, daily$Territory))
+  
+  png(paste0(figuredir, "climwin_Ra_", RaWin$combos$climate[1], ".png"), width = 32 , height = 22, 
+      units = "cm", res = 300)
+  plotall(dataset = RaOutput,
+          datasetrand = RaRand_data,
+          bestmodel = RaSingle$BestModel,
+          bestmodeldata = RaSingle$BestModelData)
+  dev.off()
 ```
 
 
