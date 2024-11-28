@@ -12,17 +12,41 @@ knitr::opts_chunk$set(echo = TRUE)
 # Data preparation
 Setting up a session
 
-```{r, echo=FALSE, message=FALSE}
-rm(list = ls()) # reset R's brain
-library(tidyverse) # for data manipulations
-library(lubridate) # for transforming date variables
-library(easyclimate) # for daily climate data extraction
-library(sf) # for spatial operations
-library(gridExtra) # for ggplot plates
-library(grid)
+```{r Package installation, echo=FALSE, eval=FALSE, message=FALSE}
+# Define the list of required libraries
+required_packages <- c(
+  "tidyverse",   # for data manipulations
+  "lubridate",   # for transforming date variables
+  "easyclimate", # for daily climate data extraction
+  "sf",          # for spatial operations
+  "gridExtra",   # for ggplot plates
+  "grid",        # required for gridExtra
+  "climwin",     # for modelling climatic windows
+  "lme4"         # for fiting mixed-effect models
+)
+
+# Function to check and install missing libraries
+check_and_install <- function(packages) {
+  for (pkg in packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      message(paste("Installing missing package:", pkg))
+      install.packages(pkg)
+    }
+    library(pkg, character.only = TRUE)
+  }
+}
+
+# Run the function for required libraries
+check_and_install(required_packages)
+
+# Additional libraries (commented out)
 # library(AICcmodavg) # to compare models by AIC
 # library(performance)
 # library(jtools)
+```
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls()) # reset R's brain
 
 # Set custom theme for ggplot2 plots
 mytheme <- theme_bw() +
