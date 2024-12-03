@@ -1,0 +1,263 @@
+---
+title: "Test example of bat weight analysis using _climwin_ package"
+author: "Oleh Prylutskyi"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls()) # reset R's brain
+path <- getwd()
+# Vignettes
+# library(climwin)
+# vignette("climwin", package = "climwin")
+# vignette("advanced_climwin", package = "climwin")
+```
+
+## Data overview
+In this example, we used measurements of forearm length (Ra) of bats as a response variable. We captured bats during summer mist-netting surveys in 7 years (Year) in two different locations (Territory). There also were oher variables we are going to test (e.g., body mass (W)).
+
+Daily climate data were obtained using [_easiclimate_](https://cran.r-project.org/web/packages/easyclimate/index.html) package, and contain tree variables:
+
+1. Prcp - Total precipitation in mm
+2. Tmin - minimal temperature, Celsius degrees
+3. Tmean - mean temperature, Celsius degrees
+
+We will use only Tmin fo this example.
+
+```{r load data}
+# Load data
+load(file = paste0(path, "/bat_data.Rdata"))
+load(file = paste0(path, "/climate_data.Rdata"))
+```
+
+## Parameter setting
+```{r}
+# Load necessary libraries
+library(climwin)
+library(lme4)
+
+# Set priors
+cdate <- daily$date  # date var in climate data
+bdate <- df$date     # date var in biological data
+
+# Relative or absolute time response.
+# If "absolute", reference day as day, month is needed
+type <- "absolute"
+refday <- c(01, 07)
+
+# If "relative", time window calculated for each individual value
+# type <- "relative"
+# refday <- NULL
+
+# Temporal resolution of climate data
+# cinterval <- "day"
+cinterval <- "week"
+
+# Upper and lower limit for tested climate windows respectively
+# Must correspond to the resolution chosen in ‘cinterval’
+# if 'cinterval' set to "days"
+# range <- c(250, 0)
+
+# if 'cinterval' set to "week"
+# range <- c(30, 0) # (~ 1 Dec)
+# range <- c(23, 0) # ~ 15 Jan
+range <- c(13, 0) # ~ 1 Apr
+
+stat <- "mean"
+
+func <- "lin"
+
+# number of repeats for randomization
+# repeats <- 5 # for metric = "C"
+repeats <- 200 # for metric = "AIC"
+
+# Metrics for assessing
+# metric = "C"
+metric = "AIC"
+
+# Number of years in data
+sample.size = nlevels(as.factor(as.vector(df$Year)))
+
+# List of dependent variable candidates
+xvar <- list(Tmin = daily$Tmin)
+```
+
+Define a baseline model.
+
+We tried both the simplest one and one wit interaction  (sex), but both returned same issues.
+```{r baseline}
+# Null model with no climate signal
+baseline <- lm(Ra ~ 1, data = df)
+
+# # Null model with interaction
+# # Firstly, it is necessary to create a variable called ‘climate’ in the biological dataset.
+# df$climate <- 1
+# # Set baseline model
+# baseline <- lm(Ra ~ climate*sex, data = df)
+```
+
+## Candidate model fitting
+```{r, message=FALSE, warning=FALSE}
+# Fit candidate model set
+RaWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    # spatial = list(df$place_id, daily$place_id)
+                    spatial = list(df$Territory, daily$Territory)
+                    )
+
+# Fit randomized model set for evaluation purposes
+RaRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  # spatial = list(df$place_id, daily$place_id)
+                  spatial = list(df$Territory, daily$Territory)
+                  )
+```
+
+## Explore the model(s)
+
+```{r}
+# Possible combinations of model parameters
+RaWin$combos
+```
+
+Dataset preview
+
+```{r}
+head(RaWin[[1]]$Dataset)
+```
+
+
+Check out the best model
+
+```{r}
+RaWin[[1]]$BestModel
+```
+
+Check out the bets model's data
+
+```{r}
+head(RaWin[[1]]$BestModelData)
+```
+
+Check out the randomized model
+
+```{r}
+head(RaRand[[1]])
+```
+
+Plot residuals against fitted values to check dependency function (linear, quadratic, cubic, etc.)
+```{r}
+p_res_fit <- list()
+
+for (i in 1:(length(RaWin)-1)) {
+  bestmod <- RaWin[[i]]$BestModel
+
+  # Create residuals vs fitted plot
+  p_res_fit[[i]] <- ggplot(bestmod, aes(x = .fitted, y = .resid)) +
+    geom_point(alpha = 0.5) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_smooth() +
+    labs(title = "Residuals vs. Fitted Plot for the best model candidate",
+         x = "Fitted Values",
+         y = "Residuals")
+  
+}
+
+for (i in 1:length(p_res_fit)) {
+  plot(p_res_fit[[i]])
+}
+```
+
+Estimate how likely our observed result would be at random
+
+```{r}
+pvalue(dataset = RaWin[[i]]$Dataset,
+       datasetrand = RaRand[[i]],
+       metric = metric,
+       sample.size = sample.size)
+```
+
+```{r}
+RaOutput <- RaWin[[1]]$Dataset
+RaRand_data <- RaRand[[1]]
+plothist(dataset = RaOutput, datasetrand = RaRand_data)
+```
+
+Plot the distribution of ΔAICc values across all tested climate windows.
+```{r}
+plotdelta(dataset = RaOutput)
+```
+
+Plot model weights
+```{r}
+plotweights(dataset = RaOutput)
+```
+
+Plot model coefficients
+```{r}
+plotbetas(dataset = RaOutput)
+```
+
+Median window
+```{r}
+plotwin(dataset = RaOutput)
+```
+
+Best model plot
+```{r}
+# Plot all diagnostic plots for a given parameter combination
+WindowOpen <- RaWin[[1]]$Dataset[1, 2]
+WindowClose <- RaWin[[1]]$Dataset[1, 3]
+
+# Fit single best model
+RaSingle <- singlewin(xvar = xvar,
+                      cdate = cdate,
+                      bdate = bdate,
+                      baseline = baseline,
+                      cinterval = cinterval,
+                      range = c(WindowOpen, WindowClose),
+                      type = type, refday = refday,
+                      stat = stat,
+                      func = func,
+                      # spatial = list(df$place_id, daily$place_id)
+                      spatial = list(df$Territory, daily$Territory)
+                      )
+
+plotbest(dataset = RaOutput,
+         bestmodel = RaSingle$BestModel, 
+         bestmodeldata = RaSingle$BestModelData)
+```
+
+Here you can observe the main issue: "Climate variable" axis, which I expected be shown actual temperatures, displays something strange. Since we are working with late spring-summer temperature in temperate Europe, there is no chance to have negative values here.
+
+
+## Plot all diagnostics
+
+
+```{r}
+# png("climwin_Ra.png", width = 32 , height = 22, 
+#     units = "cm", res = 300)
+plotall(dataset = RaOutput,
+        datasetrand = RaRand_data,
+        bestmodel = RaSingle$BestModel,
+        bestmodeldata = RaSingle$BestModelData)
+# dev.off()
+```
+The issue returned, probably something with "ModelBeta" object/variable.

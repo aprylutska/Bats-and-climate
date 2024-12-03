@@ -1,4 +1,4 @@
----
+ ---
 title: "climwin"
 author: "Oleh Prylutskyi"
 date: "`r Sys.Date()`"
@@ -60,7 +60,7 @@ theme_set(mytheme)
 modeldir <- "./models_200rep_13w_absW_nnoc/"
 figuredir <- "./figures_200rep_13w_absW_nnoc/"
 
-# Lower threshold for the number of bats captured in a night
+# Lower threshold for the number of bats captured at a night
 threshold <- 1
 
 # if LC_TIME=uk_UA.UTF-8, your months will be in Ukrainian.
@@ -100,7 +100,7 @@ df <- read.csv("./data/Inventory_all_years_2024-04-04_OP.csv") %>%
 sessionInfo() # to check your locale
 ```
 
-Since we have nights ("days") with very few bats captured, we decided to drop the nights with lesser bats captured than the threshold.
+Since we have nights ("days") with very few bats captured, we decided to drop the nights with lesser bats captured than in the threshold.
 
 ```{r, echo=FALSE, message=FALSE}
 df <- df %>%
@@ -118,7 +118,7 @@ df <- df %>%
 ```
 
 # Exploratory analysis
-Check how many bats we captured during the night, per territory.
+Check how many bats were captured during the night, per territory.
 ```{r, echo=FALSE, message=FALSE}
 ggplot(df, aes(x = day, fill = Territory)) +
   geom_histogram() +
@@ -157,14 +157,11 @@ p_dist_W <- ggplot(df, aes(x = W)) +
 gridExtra::grid.arrange(p_dist_Ra, p_dist_W, nrow=1, ncol=2)
 rm(p_dist_W, p_dist_Ra)
 ```
-Distribution in both response variables diviate from normality.
+Distribution in both response variables deviates from normality.
 
 How Ra related to W?
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
-ggplot(data = df, aes(Ra, W
-                      , colour = Year
-                      )
-       ) +
+ggplot(data = df, aes(Ra, W, colour = Year)) +
   geom_point(alpha = 0.5) + 
   geom_smooth(method = "lm", aes(fill = Year)) +
   # geom_smooth(aes(fill = Year)) + 
@@ -172,7 +169,7 @@ ggplot(data = df, aes(Ra, W
        y = "Weight (g)")
 ```
 
-Bats with bigger forearm (Ra) have higher mass (W), and vice versa. Atthe same time, there is a visible differences among years.
+Bats with bigger forearm values (Ra) have higher mass (W), and vice versa. At the same time, there are visible differences among years.
 
 ## Sex dependency
 Is there any sex differences in growth metrics? Is that possible that male and female bats growth different?
@@ -254,7 +251,7 @@ gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
 rm(Ra_t, Ra_wilk, W_t, W_wilk)
 ```
 
-Ra appeared to be sex-dependent, Weight did not show such pattern.
+Forearm length appeared to be sex-dependent, Weight did not show such pattern.
 
 To reveal possible interactions with sex, we then took a look at the sex-dependent variation of Ra/W across the years of sampling.
 
@@ -284,7 +281,7 @@ gridExtra::grid.arrange(p1, p2, nrow=1, ncol=2)
 rm(p1, p2)
 ```
 
-In our data set, male/female ration in Ra seemed to be constant across the years of survey - male young bats had always smaller arm than female ones. Contrary, W did not show a constant pattern across the year.
+In our data set, male/female ratio in Ra seemed to be constant across the years of survey - young male bats had always smaller arm than female ones. Contrary, W did not show a constant pattern across the year.
 
 Therefore, to test our hypothesis about spring weather effect on bat growth, we must fit models that include sex as either nominative explanatory variables with interactions or random effect.
 
@@ -320,11 +317,11 @@ gridExtra::grid.arrange(p_Ra_day_4years, p_W_day_4years, nrow=1, ncol=2)
 rm(p_Ra_day_4years, p_W_day_4years)
 ```
 
-Ra did not seen to change over the survey period, whereas W constantly increased. If we compare study years, slopes of simple linear models slightly varies, as well as intercepts, but remains close to the horizontal (Ra seems to vary indifferently either year or capture date). By contrast, W shows constant slopes over the years, but differs  in intercepts. In other words, 
+Ra did not seem to change over the survey period, whereas W constantly increased. If we compare study years, slopes of simple linear models slightly varies, as well as intercepts, but remains close to the horizontal (Ra seemed to vary independently on either year or capture date). By contrast, W shows constant slopes over the years, but differs in intercepts. In other words, 
 
-- W does changes over the single survey period,
+- Ra does changes over a single survey period,
 - W steadily increased,
-- there are quantitative differences in average bat W across the years, but the way W changed over the survey period.
+- there are quantitative differences in average bat W across the years, but not in the way W is changed over the survey period.
 
 We also check if some sex-dependent differences in W exist in each year.
 
@@ -359,17 +356,17 @@ To numerically check different growth metrics' variation during inventory time, 
 check_my_var(df, "Ra", "day", years = "Year")
 ```
 
-Ra is weakly related to the time of capture. 
+Ra is weakly related with the time of capture. 
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 check_my_var(df, "W", "day", "Year")
 ```
 
-W strongly related to the time of capture.
+W strongly related with the time of capture.
 
 As we can see, Ra generally remains constant over survey period, and probably doesn't differ among years. Weight, instead, (i) differs among years, and (ii) grows over the survey period.
 
-In other words, bats captured later in a year might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated a synthetic, capture-time-independent growth metrics called Body Mass Index (BMI), and test its variation over the inventory period and between the years. For each bat capture event, BMI was calculated as the residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day).
+In other words, bats captured later in a year might have higher weight, regardless of spring weather conditions. To minimize an effect of time within inventory period, we calculated a synthetic, capture-time-independent growth metrics called Body Mass Index (BMI), and test its variation over the inventory period and across years. For each bat capture event, BMI was calculated as the residuals from a linear regression of the logarithmically transformed weight (W) against the logarithm of the day-of-the-year (day).
 
 Log-transformation scales BMI from -1 to 1, which facilitates its interpretation. Inspired by  [Mikryukov et al. 2023](https://www.science.org/doi/10.1126/sciadv.adj8016), and, partly, Scaled mass index - SMI by [Peig and Green 2009](https://nsojournals.onlinelibrary.wiley.com/doi/abs/10.1111/j.1600-0706.2009.17643.x)
 
