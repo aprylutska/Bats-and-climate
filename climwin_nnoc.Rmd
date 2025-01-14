@@ -1,4 +1,4 @@
- ---
+---
 title: "climwin"
 author: "Oleh Prylutskyi"
 date: "`r Sys.Date()`"
@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls()) # reset R's brain
 ```
 
 # Data preparation
@@ -664,12 +665,12 @@ stat <- "mean"
 func <- "lin"
 
 # number of repeats for randomization
-repeats <- 5 # for metric = "C"
-# repeats <- 200 # for metric = "AIC"
+# repeats <- 5 # for metric = "C"
+repeats <- 200 # for metric = "AIC"
 
 # Metrics for assessing
-metric = "C"
-# metric = "AIC"
+# metric = "C"
+metric = "AIC"
 
 # Number of years in data
 sample.size = nlevels(as.factor(as.vector(df$Year)))
@@ -687,13 +688,13 @@ xvar <- list(Tmean = daily$Tmean, Tmin = daily$Tmin)
 ### Ra
 ```{r}
 # # Null model with no climate signal
-# baseline <- lm(Ra ~ 1, data = df)
+baseline <- lm(Ra ~ 1, data = df)
 
 # Null model with interaction
 # Firstly, it is necessary to create a variable called ‘climate’ in the biological dataset.
-df$climate <- 1
+# df$climate <- 1
 # Set baseline model
-baseline <- lm(Ra ~ climate*sex, data = df)
+# baseline <- lm(Ra ~ climate*sex, data = df)
 ```
 
 Candidate model fitting
@@ -839,35 +840,6 @@ for (i in 1:(length(RaWin)-1)) {
 }
 ```
 
-```{r}
-RaOutput <- RaWin[[1]]$Dataset
-  RaRand_data <- RaRand[[1]]
-  WindowOpen <- RaWin[[1]]$Dataset[1, 2]
-  WindowClose <- RaWin[[1]]$Dataset[1, 3]
-  
-  
-  # Fit single best model
-  RaSingle <- singlewin(xvar = xvar[1],
-                        cdate = cdate,
-                        bdate = bdate,
-                        baseline = baseline,
-                        cinterval = cinterval,
-                        range = c(WindowOpen, WindowClose),
-                        type = type, refday = refday,
-                        stat = stat,
-                        func = func,
-                        # spatial = list(df$place_id, daily$place_id)
-                        spatial = list(df$Territory, daily$Territory))
-  
-  png(paste0(figuredir, "climwin_Ra_", RaWin$combos$climate[1], ".png"), width = 32 , height = 22, 
-      units = "cm", res = 300)
-  plotall(dataset = RaOutput,
-          datasetrand = RaRand_data,
-          bestmodel = RaSingle$BestModel,
-          bestmodeldata = RaSingle$BestModelData)
-  dev.off()
-```
-
 
 ### Weight
 ```{r}
@@ -877,38 +849,38 @@ baseline <- lm(W ~ 1, data = df)
 
 Candidate model fitting
 ```{r, message=FALSE, warning=FALSE}
-# # Fit candidate model set
-# WWin <- slidingwin(xvar = xvar,
-#                     cdate = daily$date,
-#                     bdate = df$date,
-#                     baseline = baseline,
-#                     cinterval = cinterval,
-#                     range = range,
-#                     type = type, refday = refday,
-#                     stat = stat,
-#                     func = func,
-#                     spatial = list(df$place_id, daily$place_id))
-# 
-# save(WWin, file = paste0(modeldir, "WWin.Rdata"))
-# rm(WWin)
-# gc()
-# 
-# # Fit randomized model set for evaluation purposes
-# WRand <- randwin(repeats = repeats,
-#                   xvar = xvar,
-#                   cdate = cdate,
-#                   bdate = bdate,
-#                   baseline = baseline,
-#                   cinterval = cinterval,
-#                   range = range,
-#                   type = type, refday = refday,
-#                   stat = stat,
-#                   func = func,
-#                   spatial = list(df$place_id, daily$place_id))
-# 
-# save(WRand, file = paste0(modeldir, "WRand.Rdata"))
-# rm(WRand)
-# gc()
+# Fit candidate model set
+WWin <- slidingwin(xvar = xvar,
+                    cdate = daily$date,
+                    bdate = df$date,
+                    baseline = baseline,
+                    cinterval = cinterval,
+                    range = range,
+                    type = type, refday = refday,
+                    stat = stat,
+                    func = func,
+                    spatial = list(df$place_id, daily$place_id))
+
+save(WWin, file = paste0(modeldir, "WWin.Rdata"))
+rm(WWin)
+gc()
+
+# Fit randomized model set for evaluation purposes
+WRand <- randwin(repeats = repeats,
+                  xvar = xvar,
+                  cdate = cdate,
+                  bdate = bdate,
+                  baseline = baseline,
+                  cinterval = cinterval,
+                  range = range,
+                  type = type, refday = refday,
+                  stat = stat,
+                  func = func,
+                  spatial = list(df$place_id, daily$place_id))
+
+save(WRand, file = paste0(modeldir, "WRand.Rdata"))
+rm(WRand)
+gc()
 ```
 
 Model diagnostics

@@ -11,7 +11,7 @@ rm(list = ls()) # reset R's brain
 path <- getwd()
 # Vignettes
 # library(climwin)
-# vignette("climwin", package = "climwin")
+vignette("climwin", package = "climwin")
 # vignette("advanced_climwin", package = "climwin")
 ```
 
@@ -70,12 +70,12 @@ stat <- "mean"
 func <- "lin"
 
 # number of repeats for randomization
-# repeats <- 5 # for metric = "C"
-repeats <- 200 # for metric = "AIC"
+repeats <- 5 # for metric = "C"
+# repeats <- 200 # for metric = "AIC"
 
 # Metrics for assessing
-# metric = "C"
-metric = "AIC"
+metric = "C"
+# metric = "AIC"
 
 # Number of years in data
 sample.size = nlevels(as.factor(as.vector(df$Year)))
@@ -164,25 +164,16 @@ head(RaRand[[1]])
 
 Plot residuals against fitted values to check dependency function (linear, quadratic, cubic, etc.)
 ```{r}
-p_res_fit <- list()
+bestmod <- RaWin[[i]]$BestModel
 
-for (i in 1:(length(RaWin)-1)) {
-  bestmod <- RaWin[[i]]$BestModel
-
-  # Create residuals vs fitted plot
-  p_res_fit[[i]] <- ggplot(bestmod, aes(x = .fitted, y = .resid)) +
-    geom_point(alpha = 0.5) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    geom_smooth() +
-    labs(title = "Residuals vs. Fitted Plot for the best model candidate",
-         x = "Fitted Values",
-         y = "Residuals")
-  
-}
-
-for (i in 1:length(p_res_fit)) {
-  plot(p_res_fit[[i]])
-}
+# Create residuals vs fitted plot
+ggplot(bestmod, aes(x = .fitted, y = .resid)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_smooth() +
+  labs(title = "Residuals vs. Fitted Plot for the best model candidate",
+       x = "Fitted Values",
+       y = "Residuals")
 ```
 
 Estimate how likely our observed result would be at random
@@ -247,6 +238,63 @@ plotbest(dataset = RaOutput,
 
 Here you can observe the main issue: "Climate variable" axis, which I expected be shown actual temperatures, displays something strange. Since we are working with late spring-summer temperature in temperate Europe, there is no chance to have negative values here.
 
+Substitute the output of climwin::singlewin() by the original best model (RaWin[[i]]$BestModel)
+
+```{r}
+RaSingle <- RaWin[[i]]$BestModel
+plotbest(dataset = RaOutput,
+         bestmodel = RaSingle$BestModel, 
+         bestmodeldata = RaSingle$BestModelData)
+```
+
+
+
+```{r}
+ggplotRegression <- function (fit) {
+
+  require(ggplot2)
+  
+  ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+    geom_point(alpha = 0.7) +
+    stat_smooth(method = "lm", col = "red") +
+    labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                       "Intercept =",signif(fit$coef[[1]],5 ),
+                       " Slope =",signif(fit$coef[[2]], 5),
+                       " P =",signif(summary(fit)$coef[2,4], 5)))
+}
+```
+
+
+
+```{r}
+ggplotRegression(bestmod) +
+  labs(x = "Min Temp",
+       y = "Ra")
+```
+
+```{r}
+# Create residuals vs fitted plot
+ggplot(bestmod, aes(x = .fitted, y = .resid)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_smooth() +
+  labs(title = "Residuals vs. Fitted Plot for the best model candidate",
+       x = "Fitted Values",
+       y = "Residuals")
+```
+
+
+```{r}
+climwin::singlewin
+```
+
+```{r}
+RaSingle$BestModelData
+```
+
+
+
+
 
 ## Plot all diagnostics
 
@@ -258,6 +306,6 @@ plotall(dataset = RaOutput,
         datasetrand = RaRand_data,
         bestmodel = RaSingle$BestModel,
         bestmodeldata = RaSingle$BestModelData)
+# The issue returned, probably something with "ModelBeta" object/variable.
 # dev.off()
 ```
-The issue returned, probably something with "ModelBeta" object/variable.
